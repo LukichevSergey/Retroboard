@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RetroBoard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── RESET ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #F5F3EE;
+  --surface:   #FFFFFF;
+  --surface2:  #EFEDE8;
+  --border:    rgba(0,0,0,0.09);
+  --border2:   rgba(0,0,0,0.17);
+  --text:      #1A1916;
+  --muted:     #6B6860;
+  --hint:      #A09E98;
+  --accent:    #4A3FBF;
+  --accent-bg: #EEEDFE;
+  --accent-t:  #3C3489;
+  --sidebar-w: 224px;
+  --header-h:  52px;
+  --radius:    10px;
+  --radius-lg: 14px;
+  --shadow:    0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
+  --shadow-lg: 0 4px 28px rgba(0,0,0,0.14);
+}
+
+html, body { height:100%; font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); font-size:14px; line-height:1.5; }
+
+/* ── APP SHELL ── */
+.app { display:flex; height:100vh; overflow:hidden; }
+
+/* ══════════════════════ SIDEBAR ══════════════════════ */
+.sidebar {
+  width:var(--sidebar-w); flex-shrink:0;
+  background:var(--surface); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.sidebar-logo {
+  height:var(--header-h); flex-shrink:0;
+  display:flex; align-items:center; gap:9px;
+  padding:0 16px; border-bottom:1px solid var(--border);
+  font-size:14px; font-weight:600; letter-spacing:-.3px;
+}
+.logo-mark {
+  width:22px; height:22px; border-radius:7px; background:var(--accent); flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.logo-mark svg { width:13px; height:13px; fill:white; }
+
+.sb-label {
+  font-size:10px; font-weight:700; letter-spacing:.8px; text-transform:uppercase;
+  color:var(--hint); padding:14px 16px 6px;
+}
+.sb-boards { flex:1; overflow-y:auto; padding:0 8px 8px; }
+
+.board-item {
+  display:flex; align-items:center; gap:8px;
+  padding:7px 10px; border-radius:8px; cursor:pointer;
+  font-size:13px; color:var(--muted); font-weight:400;
+  transition:all .15s; user-select:none;
+}
+.board-item:hover { background:var(--surface2); color:var(--text); }
+.board-item.active { background:var(--accent-bg); color:var(--accent-t); font-weight:500; }
+.board-item .bi-dot { width:7px; height:7px; border-radius:50%; background:var(--hint); flex-shrink:0; }
+.board-item.active .bi-dot { background:var(--accent); }
+.board-item .bi-name { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.board-item .bi-actions { display:flex; gap:2px; opacity:0; transition:opacity .15s; flex-shrink:0; }
+.board-item:hover .bi-actions { opacity:1; }
+.bi-icon-btn {
+  width:18px; height:18px; border-radius:4px; border:none; background:transparent;
+  cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--hint); transition:all .15s;
+}
+.bi-icon-btn:hover { background:var(--surface3,#E8E5DF); color:var(--text); }
+.bi-icon-btn.danger:hover { background:#FCEBEB; color:#E24B4A; }
+.bi-icon-btn svg { width:11px; height:11px; }
+
+.sb-footer { padding:10px 8px; border-top:1px solid var(--border); flex-shrink:0; display:flex; flex-direction:column; gap:6px; }
+.sb-action-btn {
+  width:100%; padding:8px 10px;
+  font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500;
+  background:transparent; border:1.5px dashed var(--border2); border-radius:8px;
+  cursor:pointer; color:var(--muted);
+  display:flex; align-items:center; gap:7px; transition:all .18s;
+}
+.sb-action-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
+.sb-action-btn svg { width:14px; height:14px; flex-shrink:0; }
+
+/* ══════════════════════ MAIN ══════════════════════ */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+
+.topbar {
+  height:var(--header-h); flex-shrink:0;
+  background:var(--surface); border-bottom:1px solid var(--border);
+  padding:0 24px; display:flex; align-items:center; gap:14px;
+}
+.topbar-name {
+  font-size:14px; font-weight:500; color:var(--text);
+  border:1px solid transparent; border-radius:7px;
+  padding:3px 8px; outline:none; background:transparent;
+  font-family:'DM Sans',sans-serif; max-width:300px; transition:all .15s;
+}
+.topbar-name:hover:not([readonly]) { border-color:var(--border2); background:var(--surface2); }
+.topbar-name:focus { border-color:var(--accent); background:var(--surface); }
+.topbar-spacer { flex:1; }
+
+.sync-badge {
+  font-size:11px; font-weight:500; padding:3px 9px; border-radius:99px;
+  display:flex; align-items:center; gap:5px; border:1px solid var(--border);
+  background:var(--surface2); color:var(--muted); transition:all .3s;
+}
+.sync-badge .sd { width:6px; height:6px; border-radius:50%; background:var(--hint); flex-shrink:0; }
+.sync-badge.syncing { border-color:#EF9F27; background:#FAEEDA; color:#854F0B; }
+.sync-badge.syncing .sd { background:#EF9F27; animation:spin 1s linear infinite; }
+.sync-badge.ok  { border-color:#639922; background:#EAF3DE; color:#3B6D11; }
+.sync-badge.ok .sd  { background:#639922; }
+.sync-badge.offline { border-color:#E24B4A; background:#FCEBEB; color:#A32D2D; }
+.sync-badge.offline .sd { background:#E24B4A; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+.timer-pill {
+  display:flex; align-items:center; gap:7px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:99px; padding:5px 13px; cursor:pointer; user-select:none;
+  transition:all .2s; font-size:13px; font-weight:500; font-family:'DM Mono',monospace;
+}
+.timer-pill:hover { border-color:var(--border2); }
+.timer-pill .t-dot { width:6px; height:6px; border-radius:50%; background:var(--hint); }
+.timer-pill.running { background:#EAF3DE; border-color:#639922; color:#3B6D11; }
+.timer-pill.running .t-dot { background:#639922; animation:pulse 1s infinite; }
+.timer-pill.expired { background:#FCEBEB; border-color:#E24B4A; color:#A32D2D; }
+.timer-pill.expired .t-dot { background:#E24B4A; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+
+/* ── BTN ── */
+.btn {
+  font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500;
+  border-radius:8px; cursor:pointer; padding:6px 13px;
+  border:1px solid var(--border2); background:var(--surface); color:var(--text);
+  display:inline-flex; align-items:center; gap:6px;
+  transition:all .15s; white-space:nowrap;
+}
+.btn:hover { background:var(--surface2); }
+.btn:active { transform:scale(.98); }
+.btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+.btn-primary:hover { background:var(--accent-t); }
+.btn-ghost { background:transparent; border-color:transparent; color:var(--muted); }
+.btn-ghost:hover { background:var(--surface2); color:var(--text); }
+
+/* ══════════════════════ BOARD CANVAS ══════════════════════ */
+.board-canvas {
+  flex:1; overflow-x:auto; overflow-y:auto;
+  padding:28px 32px;
+  display:flex; justify-content:center; align-items:flex-start;
+}
+.board-inner {
+  display:flex; gap:18px;
+  align-items:flex-start;
+  min-width:max-content;
+}
+.empty-board {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:12px; padding:60px 20px; text-align:center; color:var(--hint);
+}
+.empty-board svg { width:48px; height:48px; opacity:.35; }
+.empty-board h3 { font-size:15px; font-weight:500; color:var(--muted); }
+.empty-board p  { font-size:13px; max-width:280px; }
+
+/* ══════════════════════ COLUMN ══════════════════════ */
+.column { width:290px; flex-shrink:0; display:flex; flex-direction:column; }
+.column.drag-over .col-body { background:var(--accent-bg); border-color:var(--accent); }
+
+.col-head {
+  display:flex; align-items:center; gap:8px; padding:9px 12px;
+  border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+  border:1px solid var(--border); border-bottom:none;
+}
+.col-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; cursor:pointer; transition:transform .15s; }
+.col-dot:hover { transform:scale(1.35); }
+.col-label-input {
+  flex:1; min-width:0; font-size:11px; font-weight:700; letter-spacing:.7px; text-transform:uppercase;
+  background:transparent; border:none; outline:none; font-family:'DM Sans',sans-serif; cursor:text;
+  border-bottom:1.5px solid transparent; transition:border-color .15s; padding:1px 2px;
+}
+.col-label-input:hover { border-bottom-color:rgba(0,0,0,0.15); }
+.col-badge { font-size:11px; font-weight:600; flex-shrink:0; padding:1px 7px; border-radius:20px; }
+.col-del-btn {
+  width:20px; height:20px; border-radius:5px; flex-shrink:0; border:none;
+  background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  color:var(--hint); opacity:0; transition:all .15s;
+}
+.col-head:hover .col-del-btn { opacity:1; }
+.col-del-btn:hover { background:#FCEBEB; color:#E24B4A; }
+.col-del-btn svg { width:12px; height:12px; }
+
+.col-body {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:0 0 var(--radius-lg) var(--radius-lg);
+  padding:10px; display:flex; flex-direction:column; gap:8px;
+  min-height:100px; transition:background .15s, border-color .15s;
+}
+.drop-ind { height:3px; border-radius:2px; background:var(--accent); pointer-events:none; flex-shrink:0; }
+
+/* add card */
+.add-wrap { border:1.5px dashed var(--border2); border-radius:var(--radius); overflow:hidden; transition:border-color .2s; }
+.add-wrap:focus-within { border-color:var(--accent); border-style:solid; }
+.add-trigger {
+  width:100%; padding:8px 11px; font-family:'DM Sans',sans-serif; font-size:13px;
+  background:transparent; border:none; cursor:pointer; color:var(--muted); text-align:left;
+  display:flex; align-items:center; gap:7px; transition:color .15s;
+}
+.add-trigger:hover { color:var(--text); }
+.add-trigger svg { width:13px; height:13px; flex-shrink:0; }
+.add-form { display:none; }
+.add-form.open { display:block; }
+.add-form textarea {
+  width:100%; padding:9px 11px; font-family:'DM Sans',sans-serif; font-size:13px; line-height:1.5;
+  border:none; outline:none; resize:none; background:transparent; color:var(--text); min-height:66px;
+}
+.add-form-actions {
+  display:flex; justify-content:flex-end; gap:6px;
+  padding:5px 8px 7px; border-top:1px solid var(--border);
+}
+
+/* ── ADD COLUMN BTN ── */
+.add-col-btn {
+  width:210px; flex-shrink:0; align-self:flex-start;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px; padding:24px 16px;
+  border:1.5px dashed var(--border2); border-radius:var(--radius-lg);
+  cursor:pointer; background:transparent; color:var(--muted);
+  font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; transition:all .2s;
+}
+.add-col-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
+.add-col-btn svg { width:22px; height:22px; }
+
+/* ══════════════════════ CARD ══════════════════════ */
+.card {
+  border:1px solid var(--border); border-radius:var(--radius);
+  padding:9px 11px; display:flex; flex-direction:column; gap:7px;
+  cursor:grab; user-select:none; transition:border-color .15s, box-shadow .15s;
+  background:var(--card-bg, var(--surface2));   /* ← custom colour support */
+}
+.card:hover { border-color:var(--border2); box-shadow:var(--shadow); }
+.card.is-dragging { opacity:.3; }
+.card-ghost {
+  position:fixed; pointer-events:none; z-index:1000;
+  background:var(--surface); border:1.5px solid var(--accent); border-radius:var(--radius);
+  padding:9px 11px; box-shadow:var(--shadow-lg);
+  transform:rotate(1.5deg) scale(1.04);
+  font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); line-height:1.5;
+  max-width:270px; word-break:break-word;
+}
+.card-text { font-size:13px; line-height:1.55; color:var(--text); word-break:break-word; }
+.card-footer { display:flex; align-items:center; gap:5px; }
+.vote-btn {
+  font-family:'DM Sans',sans-serif; background:rgba(255,255,255,.7); border:1px solid var(--border2);
+  border-radius:99px; padding:2px 9px; font-size:12px; font-weight:500; cursor:pointer;
+  display:flex; align-items:center; gap:4px; color:var(--muted); transition:all .15s;
+}
+.vote-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
+.vote-btn.voted { background:var(--accent-bg); border-color:var(--accent); color:var(--accent-t); font-weight:600; }
+.vote-btn svg { width:11px; height:11px; }
+.card-spacer { flex:1; }
+/* card colour swatch button */
+.card-color-btn {
+  width:22px; height:22px; border-radius:5px; border:none; background:transparent;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  color:var(--hint); opacity:0; transition:all .15s;
+}
+.card:hover .card-color-btn { opacity:1; }
+.card-color-btn:hover { background:var(--surface2); color:var(--text); }
+.card-color-btn svg { width:12px; height:12px; }
+.card-del-btn {
+  width:22px; height:22px; border-radius:5px; border:none; background:transparent;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  color:var(--hint); opacity:0; transition:all .15s;
+}
+.card:hover .card-del-btn { opacity:1; }
+.card-del-btn:hover { background:#FCEBEB; color:#E24B4A; }
+.card-del-btn svg { width:12px; height:12px; }
+.empty-hint { text-align:center; color:var(--hint); font-size:12px; padding:16px 0; font-style:italic; }
+
+/* ══════════════════════ COLOUR PICKER POPUP ══════════════════════ */
+.color-popup {
+  position:fixed; z-index:500;
+  background:var(--surface); border:1px solid var(--border2); border-radius:12px;
+  box-shadow:var(--shadow-lg); padding:12px 14px;
+  display:none; flex-direction:column; gap:10px;
+  animation:mIn .15s ease;
+}
+.color-popup.open { display:flex; }
+.color-popup-title { font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--hint); }
+.color-swatches { display:flex; flex-wrap:wrap; gap:6px; }
+.swatch {
+  width:24px; height:24px; border-radius:6px; cursor:pointer;
+  border:2px solid transparent; transition:transform .12s, border-color .12s;
+  flex-shrink:0;
+}
+.swatch:hover { transform:scale(1.2); }
+.swatch.active { border-color:var(--text); }
+.swatch.none-swatch {
+  background:var(--surface2); border:1.5px dashed var(--border2);
+  display:flex; align-items:center; justify-content:center; color:var(--hint);
+}
+
+/* ══════════════════════ MODALS ══════════════════════ */
+.overlay {
+  position:fixed; inset:0; background:rgba(15,14,12,.42); backdrop-filter:blur(3px);
+  display:none; align-items:center; justify-content:center; z-index:100; padding:20px;
+}
+.overlay.open { display:flex; }
+.modal {
+  background:var(--surface); border-radius:var(--radius-lg); border:1px solid var(--border);
+  box-shadow:var(--shadow-lg); padding:26px; width:100%; max-width:420px; animation:mIn .18s ease;
+}
+@keyframes mIn { from{opacity:0;transform:translateY(8px) scale(.98)} to{opacity:1;transform:none} }
+.modal-title { font-size:15px; font-weight:600; margin-bottom:5px; }
+.modal-sub { font-size:13px; color:var(--muted); margin-bottom:18px; line-height:1.5; }
+.mfield { margin-bottom:16px; }
+.mfield label { display:block; font-size:11px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--hint); margin-bottom:6px; }
+.mfield input[type=text] {
+  width:100%; padding:8px 11px; border:1px solid var(--border2); border-radius:8px;
+  font-family:'DM Sans',sans-serif; font-size:13px; background:var(--surface2); color:var(--text); outline:none;
+}
+.mfield input[type=text]:focus { border-color:var(--accent); }
+.mfield input[type=number] {
+  width:80px; padding:8px 10px; border:1px solid var(--border2); border-radius:8px;
+  font-family:'DM Mono',monospace; font-size:15px; text-align:center;
+  background:var(--surface2); color:var(--text); outline:none;
+}
+.mfield input[type=number]:focus { border-color:var(--accent); }
+.mrow { display:flex; align-items:center; gap:10px; }
+.mrow span { font-size:13px; color:var(--muted); }
+.modal-actions { display:flex; justify-content:flex-end; gap:8px; }
+
+/* colour scheme grid in new-column modal */
+.scheme-grid { display:flex; flex-wrap:wrap; gap:8px; }
+.scheme-tile {
+  display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:8px;
+  cursor:pointer; border:2px solid transparent; transition:all .15s;
+}
+.scheme-tile:hover { border-color:rgba(0,0,0,.15); }
+.scheme-tile.selected { border-color:var(--accent); }
+.scheme-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.scheme-name { font-size:12px; font-weight:500; }
+
+.export-area {
+  background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius);
+  padding:13px; font-family:'DM Mono',monospace; font-size:12px;
+  color:var(--muted); white-space:pre-wrap; line-height:1.65;
+  max-height:220px; overflow-y:auto; margin-bottom:18px;
+}
+
+/* ── LOADING ── */
+.loading-screen {
+  position:fixed; inset:0; background:var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px; z-index:500;
+}
+.loading-screen .spinner {
+  width:32px; height:32px; border:3px solid var(--border2);
+  border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite;
+}
+.loading-screen p { font-size:13px; color:var(--muted); }
+.loading-screen.hidden { display:none; }
+
+/* ── TOAST ── */
+.toast {
+  position:fixed; bottom:22px; right:22px;
+  background:var(--text); color:#fff; border-radius:10px;
+  padding:9px 17px; font-size:13px; font-weight:500; box-shadow:var(--shadow-lg);
+  opacity:0; transform:translateY(6px); transition:all .2s; pointer-events:none; z-index:9999;
+}
+.toast.show { opacity:1; transform:none; }
+
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="spinner"></div>
+  <p>Подключение к Firebase…</p>
+</div>
+
+<!-- APP -->
+<div class="app" id="appShell" style="display:none">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 12 12"><rect x="1" y="1" width="4" height="4" rx="1"/><rect x="7" y="1" width="4" height="4" rx="1"/><rect x="1" y="7" width="4" height="4" rx="1"/><rect x="7" y="7" width="4" height="4" rx="1"/></svg>
+      </div>
+      RetroBoard
+    </div>
+    <div class="sb-label">Доски</div>
+    <div class="sb-boards" id="sbBoards"></div>
+    <div class="sb-footer">
+      <button class="sb-action-btn" onclick="openNewBoardModal()">
+        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Новая доска
+      </button>
+      <button class="sb-action-btn" id="copyBoardBtn" onclick="copyBoard()" style="display:none">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Копировать доску
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <input class="topbar-name" id="topbarName" type="text" value="Выберите доску" spellcheck="false"
+        onchange="renameCurBoard(this.value)" onblur="renameCurBoard(this.value)" readonly />
+      <div class="topbar-spacer"></div>
+      <div class="sync-badge" id="syncBadge"><div class="sd"></div><span id="syncText">—</span></div>
+      <div class="timer-pill" id="timerPill" onclick="openTimerModal()">
+        <div class="t-dot"></div><span id="timerDisplay">5:00</span>
+      </div>
+      <button class="btn" onclick="openExport()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Экспорт
+      </button>
+    </div>
+
+    <div class="board-canvas" id="boardCanvas">
+      <div class="empty-board" id="emptyState">
+        <svg fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="7" height="18" rx="2"/><rect x="14" y="3" width="7" height="12" rx="2"/>
+        </svg>
+        <h3>Нет активной доски</h3>
+        <p>Выберите доску слева или создайте новую</p>
+      </div>
+      <div class="board-inner" id="boardInner" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ COLOUR PICKER POPUP (shared, repositioned by JS) ══════════ -->
+<div class="color-popup" id="colorPopup">
+  <div class="color-popup-title" id="colorPopupTitle">Цвет</div>
+  <div class="color-swatches" id="colorSwatches"></div>
+</div>
+
+<!-- ══════════ MODALS ══════════ -->
+
+<!-- New / copy board -->
+<div class="overlay" id="newBoardOverlay">
+  <div class="modal">
+    <div class="modal-title" id="newBoardModalTitle">Новая доска</div>
+    <div class="modal-sub" id="newBoardModalSub">Введите название, например «Sprint #43».</div>
+    <div class="mfield">
+      <label>Название</label>
+      <input type="text" id="newBoardName" placeholder="Sprint #43" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOverlay('newBoardOverlay')">Отмена</button>
+      <button class="btn btn-primary" id="newBoardConfirmBtn" onclick="confirmNewBoard()">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm delete board -->
+<div class="overlay" id="delBoardOverlay">
+  <div class="modal" style="max-width:340px;text-align:center">
+    <div style="font-size:28px;margin-bottom:10px">🗑️</div>
+    <div class="modal-title" id="delBoardTitle"></div>
+    <div class="modal-sub" id="delBoardMsg"></div>
+    <div class="modal-actions" style="justify-content:center">
+      <button class="btn btn-ghost" onclick="closeOverlay('delBoardOverlay')">Отмена</button>
+      <button class="btn" style="background:#FCEBEB;border-color:#F09595;color:#A32D2D" id="delBoardOk">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<!-- New column (with colour picker) -->
+<div class="overlay" id="newColOverlay">
+  <div class="modal">
+    <div class="modal-title">Добавить колонку</div>
+    <div class="modal-sub">Задайте название и цветовую схему.</div>
+    <div class="mfield">
+      <label>Название</label>
+      <input type="text" id="newColName" placeholder="Например: Ideas" />
+    </div>
+    <div class="mfield">
+      <label>Цвет заголовка</label>
+      <div class="scheme-grid" id="schemeGrid"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOverlay('newColOverlay')">Отмена</button>
+      <button class="btn btn-primary" onclick="confirmNewCol()">Создать</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm delete column -->
+<div class="overlay" id="delColOverlay">
+  <div class="modal" style="max-width:340px;text-align:center">
+    <div style="font-size:28px;margin-bottom:10px">🗑️</div>
+    <div class="modal-title" id="delColTitle"></div>
+    <div class="modal-sub" id="delColMsg"></div>
+    <div class="modal-actions" style="justify-content:center">
+      <button class="btn btn-ghost" onclick="closeOverlay('delColOverlay')">Отмена</button>
+      <button class="btn" style="background:#FCEBEB;border-color:#F09595;color:#A32D2D" id="delColOk">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Timer -->
+<div class="overlay" id="timerOverlay">
+  <div class="modal">
+    <div class="modal-title">Таймер сессии</div>
+    <div class="modal-sub">Установите время на обсуждение.</div>
+    <div class="mfield">
+      <label>Длительность</label>
+      <div class="mrow"><input type="number" id="timerMinInput" value="5" min="1" max="90"/><span>минут</span></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOverlay('timerOverlay')">Отмена</button>
+      <button class="btn btn-primary" id="timerActionBtn" onclick="handleTimerAction()">Запустить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export -->
+<div class="overlay" id="exportOverlay">
+  <div class="modal">
+    <div class="modal-title">Экспорт результатов</div>
+    <div class="modal-sub">Карточки отсортированы по голосам.</div>
+    <div class="export-area" id="exportContent"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeOverlay('exportOverlay')">Закрыть</button>
+      <button class="btn btn-primary" onclick="copyExport()">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2v1"/></svg>
+        Копировать
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   ██████  FIREBASE CONFIG — ВСТАВЬТЕ СВОИ КЛЮЧИ СЮДА  ██████
+   ═══════════════════════════════════════════════════════════
+   Firebase Console → Project Settings → Your apps → Web app
+   ══════════════════════════════════════════════════════════ */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyArRKIb9uRRCHKKmUSI3XDMAkbqBXrSOxs",
+  authDomain:        "retroboard-b2f7c.firebaseapp.com",
+  projectId:         "retroboard-b2f7c",
+  storageBucket:     "retroboard-b2f7c.firebasestorage.app",
+  messagingSenderId: "445885996354",
+  appId:             "1:445885996354:web:49918467ee620d7c5b3cdb",
+};
+/* Firestore Rules:
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /{document=**} { allow read, write: if true; }
+     }
+   }
+*/
+
+/* ══════════════════════════════════════════════════════════
+   COLOUR DEFINITIONS
+   ══════════════════════════════════════════════════════════ */
+
+// Column header colour schemes
+const COL_SCHEMES = [
+  { id:0, name:'Зелёный',   bg:'#EAF3DE', text:'#3B6D11', dot:'#639922', tag:'#C0DD97', tt:'#27500A' },
+  { id:1, name:'Красный',   bg:'#FCEBEB', text:'#A32D2D', dot:'#E24B4A', tag:'#F7C1C1', tt:'#501313' },
+  { id:2, name:'Синий',     bg:'#E6F1FB', text:'#185FA5', dot:'#378ADD', tag:'#B5D4F4', tt:'#042C53' },
+  { id:3, name:'Оранжевый', bg:'#FAEEDA', text:'#854F0B', dot:'#EF9F27', tag:'#FAC775', tt:'#412402' },
+  { id:4, name:'Фиолетов.', bg:'#EEEDFE', text:'#534AB7', dot:'#7F77DD', tag:'#CECBF6', tt:'#26215C' },
+  { id:5, name:'Бирюзовый', bg:'#E1F5EE', text:'#085041', dot:'#1D9E75', tag:'#9FE1CB', tt:'#04342C' },
+  { id:6, name:'Розовый',   bg:'#FDE8F3', text:'#8B1A5A', dot:'#D94F9A', tag:'#F5B8DA', tt:'#4A0D30' },
+  { id:7, name:'Жёлтый',   bg:'#FEFBD8', text:'#6B5E00', dot:'#D4B800', tag:'#F0E070', tt:'#3A3300' },
+];
+
+// Card background colour presets (warm palette + neutrals)
+const CARD_COLORS = [
+  { hex:'#FFFFFF', label:'Белый'     },
+  { hex:'#EFEDE8', label:'Песочный'  },
+  { hex:'#FFF8E6', label:'Кремовый'  },
+  { hex:'#FEF3DC', label:'Персик'    },
+  { hex:'#FDEBD0', label:'Абрикос'   },
+  { hex:'#FDE8E8', label:'Розовый'   },
+  { hex:'#FDE8F3', label:'Пудра'     },
+  { hex:'#E8F4E8', label:'Мята'      },
+  { hex:'#E6F1FB', label:'Лазурь'    },
+  { hex:'#EDE8FE', label:'Лаванда'   },
+  { hex:'#FFFBCC', label:'Лимон'     },
+  { hex:'#E8F8F2', label:'Нефрит'    },
+];
+
+/* ══════════════════════════════════════════════════════════
+   FIREBASE INIT
+   ══════════════════════════════════════════════════════════ */
+let db = null, firebaseOk = false;
+
+function initFirebase() {
+  try {
+    if (FIREBASE_CONFIG.apiKey === 'PASTE_YOUR_apiKey_HERE') throw new Error('Конфиг не заполнен');
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    db.enablePersistence().catch(()=>{});
+    firebaseOk = true;
+    setSyncBadge('ok','Подключено');
+  } catch(e) {
+    console.warn('Firebase:', e.message);
+    setSyncBadge('offline','Локально');
+  }
+}
+function setSyncBadge(cls,text) {
+  document.getElementById('syncBadge').className = 'sync-badge '+cls;
+  document.getElementById('syncText').textContent = text;
+}
+function boardsCol() { return db.collection('retroBoards'); }
+function boardDoc(id) { return boardsCol().doc(id); }
+async function fbSave(b) {
+  if (!firebaseOk) return;
+  setSyncBadge('syncing','Сохранение…');
+  try { await boardDoc(b.id).set(b); setSyncBadge('ok','Сохранено'); }
+  catch(e) { console.error(e); setSyncBadge('offline','Ошибка'); }
+}
+async function fbDel(id) { if (firebaseOk) try { await boardDoc(id).delete(); } catch(e){} }
+let unsub = null;
+function subscribeBoards() {
+  if (!firebaseOk) return;
+  if (unsub) unsub();
+  unsub = boardsCol().onSnapshot(snap => {
+    snap.docChanges().forEach(ch => {
+      if (ch.type==='added'||ch.type==='modified') {
+        boards[ch.doc.id] = ch.doc.data();
+        if (activeBoardId===ch.doc.id) renderBoard();
+      }
+      if (ch.type==='removed') {
+        delete boards[ch.doc.id];
+        if (activeBoardId===ch.doc.id) { activeBoardId=null; showEmpty(); }
+      }
+    });
+    renderSidebar();
+    setSyncBadge('ok','В сети');
+  }, e => { console.error(e); setSyncBadge('offline','Ошибка'); });
+}
+
+/* ══════════════════════════════════════════════════════════
+   LOCAL STORAGE FALLBACK
+   ══════════════════════════════════════════════════════════ */
+function lsSave() {
+  if (firebaseOk) return;
+  try { localStorage.setItem('rb_v4', JSON.stringify({boards,activeBoardId})); } catch(e){}
+}
+function lsLoad() {
+  try {
+    const d = JSON.parse(localStorage.getItem('rb_v4')||'null');
+    if (!d) return false;
+    boards=d.boards||{}; activeBoardId=d.activeBoardId||null; return true;
+  } catch(e){ return false; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════════════════════ */
+const DEFAULT_COLS  = [{id:'c1',label:'Start',s:0},{id:'c2',label:'Stop',s:1},{id:'c3',label:'Continue',s:2}];
+const DEFAULT_CARDS = {
+  c1:[{id:1,text:'Ежедневные код-ревью по утрам',votes:3,voted:false,color:null}],
+  c2:[{id:2,text:'Затяжные встречи без повестки',votes:5,voted:false,color:null}],
+  c3:[{id:3,text:'Чёткие критерии готовности',votes:4,voted:false,color:null}],
+};
+let boards={}, activeBoardId=null;
+function curBoard(){ return boards[activeBoardId]||null; }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+
+/* ══════════════════════════════════════════════════════════
+   BOARDS CRUD
+   ══════════════════════════════════════════════════════════ */
+let _newBoardMode = 'create'; // 'create' | 'copy'
+
+function openNewBoardModal() {
+  _newBoardMode = 'create';
+  document.getElementById('newBoardModalTitle').textContent = 'Новая доска';
+  document.getElementById('newBoardModalSub').textContent = 'Введите название, например «Sprint #43».';
+  document.getElementById('newBoardConfirmBtn').textContent = 'Создать';
+  document.getElementById('newBoardName').value = '';
+  document.getElementById('newBoardOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('newBoardName').focus(), 60);
+}
+function copyBoard() {
+  const b = curBoard(); if (!b) return;
+  _newBoardMode = 'copy';
+  document.getElementById('newBoardModalTitle').textContent = 'Копировать доску';
+  document.getElementById('newBoardModalSub').textContent = 'Введите название для копии. Все колонки и карточки будут скопированы.';
+  document.getElementById('newBoardConfirmBtn').textContent = 'Копировать';
+  document.getElementById('newBoardName').value = b.name + ' (копия)';
+  document.getElementById('newBoardOverlay').classList.add('open');
+  setTimeout(()=>{ const inp=document.getElementById('newBoardName'); inp.focus(); inp.select(); }, 60);
+}
+function confirmNewBoard() {
+  const name = document.getElementById('newBoardName').value.trim() || 'Новая доска';
+  if (_newBoardMode === 'copy') { doCopyBoard(name); }
+  else { doCreateBoard(name); }
+  closeOverlay('newBoardOverlay');
+}
+function doCreateBoard(name) {
+  const id = 'b_'+uid();
+  const b = {
+    id, name, createdAt:Date.now(),
+    cols: JSON.parse(JSON.stringify(DEFAULT_COLS)),
+    cards: JSON.parse(JSON.stringify(DEFAULT_CARDS)),
+    _nextId:10, _nextColId:5,
+  };
+  boards[id]=b; fbSave(b); lsSave(); renderSidebar(); selectBoard(id);
+  showToast('Доска «'+name+'» создана');
+}
+function doCopyBoard(name) {
+  const src = curBoard(); if (!src) return;
+  const id = 'b_'+uid();
+  const b = JSON.parse(JSON.stringify(src));
+  b.id=id; b.name=name; b.createdAt=Date.now();
+  // reset votes on all cards in copy
+  Object.values(b.cards).forEach(arr => arr.forEach(c => { c.voted=false; }));
+  boards[id]=b; fbSave(b); lsSave(); renderSidebar(); selectBoard(id);
+  showToast('Доска скопирована');
+}
+
+let _pendingDelBoard = null;
+function confirmDelBoard(id) {
+  _pendingDelBoard=id;
+  const b=boards[id];
+  document.getElementById('delBoardTitle').textContent=`Удалить «${b?.name}»?`;
+  document.getElementById('delBoardMsg').textContent='Все колонки и карточки будут удалены безвозвратно.';
+  document.getElementById('delBoardOk').onclick=doDelBoard;
+  document.getElementById('delBoardOverlay').classList.add('open');
+}
+function doDelBoard() {
+  if (!_pendingDelBoard) return;
+  fbDel(_pendingDelBoard); delete boards[_pendingDelBoard];
+  if (activeBoardId===_pendingDelBoard){ activeBoardId=null; showEmpty(); }
+  _pendingDelBoard=null; closeOverlay('delBoardOverlay'); lsSave(); renderSidebar();
+  showToast('Доска удалена');
+}
+
+function selectBoard(id) {
+  if (!boards[id]) return;
+  activeBoardId=id;
+  const inp=document.getElementById('topbarName');
+  inp.value=boards[id].name; inp.removeAttribute('readonly');
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('boardInner').style.display='';
+  document.getElementById('copyBoardBtn').style.display='';
+  renderSidebar(); renderBoard();
+}
+function renameCurBoard(val) {
+  const b=curBoard(); if (!b) return;
+  b.name=val.trim()||b.name; fbSave(b); lsSave(); renderSidebar();
+}
+function showEmpty() {
+  document.getElementById('emptyState').style.display='';
+  document.getElementById('boardInner').style.display='none';
+  document.getElementById('topbarName').value='Выберите доску';
+  document.getElementById('topbarName').setAttribute('readonly','');
+  document.getElementById('copyBoardBtn').style.display='none';
+  renderSidebar();
+}
+
+/* ══════════════════════════════════════════════════════════
+   SIDEBAR RENDER
+   ══════════════════════════════════════════════════════════ */
+function renderSidebar() {
+  const el=document.getElementById('sbBoards');
+  const list=Object.values(boards).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  if (!list.length) {
+    el.innerHTML='<div style="padding:8px 12px;font-size:12px;color:var(--hint);font-style:italic">Нет досок</div>';
+    return;
+  }
+  el.innerHTML=list.map(b=>`
+    <div class="board-item ${b.id===activeBoardId?'active':''}" onclick="selectBoard('${b.id}')">
+      <div class="bi-dot"></div>
+      <span class="bi-name">${esc(b.name)}</span>
+      <div class="bi-actions">
+        <button class="bi-icon-btn danger" onclick="event.stopPropagation();confirmDelBoard('${b.id}')" title="Удалить">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>`).join('');
+}
+
+/* ══════════════════════════════════════════════════════════
+   COLUMNS CRUD
+   ══════════════════════════════════════════════════════════ */
+let _newColScheme = 0;
+
+function openAddCol() {
+  _newColScheme = 0;
+  document.getElementById('newColName').value = '';
+  renderSchemeGrid();
+  document.getElementById('newColOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('newColName').focus(), 60);
+}
+function renderSchemeGrid() {
+  document.getElementById('schemeGrid').innerHTML = COL_SCHEMES.map(s=>`
+    <div class="scheme-tile ${s.id===_newColScheme?'selected':''}" onclick="selectScheme(${s.id})"
+         style="background:${s.bg}">
+      <div class="scheme-dot" style="background:${s.dot}"></div>
+      <span class="scheme-name" style="color:${s.text}">${s.name}</span>
+    </div>`).join('');
+}
+function selectScheme(id) { _newColScheme=id; renderSchemeGrid(); }
+function confirmNewCol() {
+  const b=curBoard(); if (!b) return;
+  const label=document.getElementById('newColName').value.trim()||'Новая колонка';
+  const cid='c_'+uid();
+  b.cols.push({id:cid, label, s:_newColScheme});
+  b.cards[cid]=[];
+  fbSave(b); lsSave(); closeOverlay('newColOverlay'); renderBoard();
+  setTimeout(()=>{ const el=document.getElementById('cli-'+cid); if(el){el.focus();el.select();} },40);
+}
+
+function renameCol(colId,val) {
+  const b=curBoard(); if (!b) return;
+  const c=b.cols.find(x=>x.id===colId); if (!c) return;
+  c.label=val.trim()||c.label; fbSave(b); lsSave();
+}
+
+/* Change column colour scheme — triggered by dot click */
+let _colPickerTarget = null; // { type:'col', colId }
+function openColSchemePopup(e, colId) {
+  e.stopPropagation();
+  _colPickerTarget = { type:'col', colId };
+  const swatches = document.getElementById('colorSwatches');
+  document.getElementById('colorPopupTitle').textContent = 'Цвет заголовка';
+  const b=curBoard();
+  const col=b?.cols.find(c=>c.id===colId);
+  swatches.innerHTML = COL_SCHEMES.map(s=>`
+    <div class="swatch ${col?.s===s.id?'active':''}"
+         style="background:${s.bg}; border-color:${col?.s===s.id?s.dot:'transparent'}; outline: 2px solid ${s.dot}; outline-offset:1px;"
+         title="${s.name}"
+         onclick="applyColScheme('${colId}',${s.id})">
+    </div>`).join('');
+  positionPopup(e);
+}
+
+function applyColScheme(colId, schemeId) {
+  const b=curBoard(); if (!b) return;
+  const c=b.cols.find(x=>x.id===colId); if (!c) return;
+  c.s=schemeId; fbSave(b); lsSave(); closeColorPopup(); renderBoard();
+}
+
+let _pendingDelCol = null;
+function confirmDelCol(colId) {
+  _pendingDelCol=colId;
+  const b=curBoard(); const col=b?.cols.find(c=>c.id===colId);
+  const n=(b?.cards[colId]||[]).length;
+  document.getElementById('delColTitle').textContent=`Удалить «${col?.label}»?`;
+  document.getElementById('delColMsg').textContent=n>0
+    ?`В колонке ${n} карт${n===1?'очка':n<5?'очки':'очек'}. Все будут удалены.`:'Колонка пустая.';
+  document.getElementById('delColOk').onclick=doDelCol;
+  document.getElementById('delColOverlay').classList.add('open');
+}
+function doDelCol() {
+  const b=curBoard(); if (!b||!_pendingDelCol) return;
+  b.cols=b.cols.filter(c=>c.id!==_pendingDelCol); delete b.cards[_pendingDelCol];
+  _pendingDelCol=null; closeOverlay('delColOverlay'); fbSave(b); lsSave(); renderBoard();
+  showToast('Колонка удалена');
+}
+
+/* ══════════════════════════════════════════════════════════
+   CARD COLOUR PICKER
+   ══════════════════════════════════════════════════════════ */
+let _cardPickerCardId = null;
+
+function openCardColorPopup(e, cardId) {
+  e.stopPropagation();
+  _cardPickerCardId = cardId;
+  const b=curBoard();
+  const col=colOfCard(cardId);
+  const card=col ? b.cards[col].find(c=>c.id===cardId) : null;
+  const curColor=card?.color||null;
+
+  document.getElementById('colorPopupTitle').textContent = 'Цвет карточки';
+  const swatches=document.getElementById('colorSwatches');
+  // "none" swatch first
+  swatches.innerHTML = `
+    <div class="swatch none-swatch ${curColor===null?'active':''}" title="По умолчанию" onclick="applyCardColor(${cardId},null)">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>`+
+    CARD_COLORS.map(c=>`
+      <div class="swatch ${curColor===c.hex?'active':''}"
+           style="background:${c.hex}; border:1.5px solid rgba(0,0,0,.12);"
+           title="${c.label}"
+           onclick="applyCardColor(${cardId},'${c.hex}')">
+      </div>`).join('');
+  positionPopup(e);
+}
+
+function applyCardColor(cardId, color) {
+  const b=curBoard(); if (!b) return;
+  const col=colOfCard(cardId); if (!col) return;
+  const card=b.cards[col].find(c=>c.id===cardId); if (!card) return;
+  card.color = color;
+  fbSave(b); lsSave(); closeColorPopup(); renderBoard();
+}
+
+/* ══════════════════════════════════════════════════════════
+   COLOUR POPUP POSITIONING
+   ══════════════════════════════════════════════════════════ */
+function positionPopup(e) {
+  const popup=document.getElementById('colorPopup');
+  popup.classList.add('open');
+  // position near click but keep on screen
+  const pw=220, ph=120;
+  let x=e.clientX+8, y=e.clientY+8;
+  if (x+pw > window.innerWidth-8)  x=e.clientX-pw-8;
+  if (y+ph > window.innerHeight-8) y=e.clientY-ph-8;
+  popup.style.left=x+'px'; popup.style.top=y+'px';
+}
+function closeColorPopup() {
+  document.getElementById('colorPopup').classList.remove('open');
+  _colPickerTarget=null; _cardPickerCardId=null;
+}
+document.addEventListener('mousedown', e => {
+  const popup=document.getElementById('colorPopup');
+  if (popup.classList.contains('open') && !popup.contains(e.target)) closeColorPopup();
+});
+
+/* ══════════════════════════════════════════════════════════
+   CARDS CRUD
+   ══════════════════════════════════════════════════════════ */
+function colOfCard(cardId) {
+  const b=curBoard(); if (!b) return null;
+  for (const k in b.cards){ if (b.cards[k].find(c=>c.id===cardId)) return k; }
+  return null;
+}
+function openAdd(colId){
+  document.getElementById('at-'+colId).style.display='none';
+  document.getElementById('af-'+colId).classList.add('open');
+  setTimeout(()=>document.getElementById('atx-'+colId).focus(),30);
+}
+function closeAdd(colId){
+  const af=document.getElementById('af-'+colId); if (!af) return;
+  af.classList.remove('open');
+  document.getElementById('at-'+colId).style.display='';
+  document.getElementById('atx-'+colId).value='';
+}
+function addCard(colId){
+  const b=curBoard(); if (!b) return;
+  const val=document.getElementById('atx-'+colId).value.trim(); if (!val) return;
+  b._nextId=(b._nextId||100)+1;
+  b.cards[colId].push({id:b._nextId, text:val, votes:0, voted:false, color:null});
+  fbSave(b); lsSave(); renderBoard(); showToast('Карточка добавлена');
+}
+function delCard(cardId){
+  const b=curBoard(); if (!b) return;
+  const col=colOfCard(cardId); if (!col) return;
+  b.cards[col]=b.cards[col].filter(c=>c.id!==cardId);
+  fbSave(b); lsSave(); renderBoard();
+}
+function vote(cardId){
+  const b=curBoard(); if (!b) return;
+  const col=colOfCard(cardId); if (!col) return;
+  const c=b.cards[col].find(c=>c.id===cardId); if (!c) return;
+  c.voted?(c.votes--,c.voted=false):(c.votes++,c.voted=true);
+  fbSave(b); lsSave(); renderBoard();
+}
+
+/* ══════════════════════════════════════════════════════════
+   DRAG & DROP
+   ══════════════════════════════════════════════════════════ */
+let dnd={active:false,cardId:null,ghost:null,ox:0,oy:0,targetCol:null,insertBefore:null};
+
+function onCardDown(e,cardId){
+  if (e.target.closest('button')) return;
+  e.preventDefault();
+  const el=document.getElementById('card-'+cardId);
+  const r=el.getBoundingClientRect();
+  dnd={active:true,cardId,ghost:null,ox:e.clientX-r.left,oy:e.clientY-r.top,targetCol:null,insertBefore:null};
+  const g=document.createElement('div');
+  g.className='card-ghost';
+  g.style.cssText=`width:${r.width}px;left:${e.clientX-dnd.ox}px;top:${e.clientY-dnd.oy}px`;
+  g.textContent=el.querySelector('.card-text').textContent;
+  document.body.appendChild(g); dnd.ghost=g;
+  el.classList.add('is-dragging');
+  document.addEventListener('mousemove',onDragMove,{passive:true});
+  document.addEventListener('mouseup',onDragUp);
+}
+function onDragMove(e){
+  if (!dnd.active) return;
+  dnd.ghost.style.left=(e.clientX-dnd.ox)+'px';
+  dnd.ghost.style.top=(e.clientY-dnd.oy)+'px';
+  document.querySelectorAll('.drop-ind').forEach(el=>el.remove());
+  const b=curBoard(); if (!b) return;
+  b.cols.forEach(col=>document.querySelector(`.column[data-col="${col.id}"]`)?.classList.remove('drag-over'));
+  let tc=null;
+  for (const col of b.cols){
+    const body=document.getElementById('cb-'+col.id); if (!body) continue;
+    const r=body.getBoundingClientRect();
+    if (e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top-30&&e.clientY<=r.bottom+30){tc=col.id;break;}
+  }
+  dnd.targetCol=tc; if (!tc) return;
+  document.querySelector(`.column[data-col="${tc}"]`)?.classList.add('drag-over');
+  const body=document.getElementById('cb-'+tc);
+  let ib=null;
+  for (const c of (b.cards[tc]||[])){
+    if (c.id===dnd.cardId) continue;
+    const el=document.getElementById('card-'+c.id); if (!el) continue;
+    const r=el.getBoundingClientRect();
+    if (e.clientY<r.top+r.height/2){ib=c.id;break;}
+  }
+  dnd.insertBefore=ib;
+  const ind=document.createElement('div'); ind.className='drop-ind';
+  if (ib!==null){ const ref=document.getElementById('card-'+ib); if(ref) body.insertBefore(ind,ref); }
+  else body.appendChild(ind);
+}
+function onDragUp(){
+  document.removeEventListener('mousemove',onDragMove);
+  document.removeEventListener('mouseup',onDragUp);
+  document.querySelectorAll('.drop-ind').forEach(el=>el.remove());
+  const b=curBoard();
+  if (b) b.cols.forEach(col=>document.querySelector(`.column[data-col="${col.id}"]`)?.classList.remove('drag-over'));
+  if (dnd.ghost){dnd.ghost.remove();dnd.ghost=null;}
+  const cardEl=document.getElementById('card-'+dnd.cardId);
+  if (cardEl) cardEl.classList.remove('is-dragging');
+  if (dnd.active&&dnd.targetCol&&b){
+    const {cardId,targetCol,insertBefore}=dnd;
+    const fromCol=colOfCard(cardId);
+    if (fromCol){
+      const cardObj=b.cards[fromCol].find(c=>c.id===cardId);
+      b.cards[fromCol]=b.cards[fromCol].filter(c=>c.id!==cardId);
+      const idx=insertBefore===null?b.cards[targetCol].length:b.cards[targetCol].findIndex(c=>c.id===insertBefore);
+      b.cards[targetCol].splice(idx<0?b.cards[targetCol].length:idx,0,cardObj);
+      fbSave(b); lsSave(); renderBoard();
+      if (fromCol!==targetCol) showToast('Карточка перемещена');
+    }
+  }
+  dnd={active:false,cardId:null,ghost:null,ox:0,oy:0,targetCol:null,insertBefore:null};
+}
+
+/* ══════════════════════════════════════════════════════════
+   BOARD RENDER
+   ══════════════════════════════════════════════════════════ */
+function schemeVars(s) {
+  const sc = COL_SCHEMES[s] || COL_SCHEMES[0];
+  return `background:${sc.bg}`;
+}
+function schemeHeadStyle(s) {
+  const sc = COL_SCHEMES[s] || COL_SCHEMES[0];
+  return `background:${sc.bg}`;
+}
+function schemeDotStyle(s) {
+  const sc = COL_SCHEMES[s] || COL_SCHEMES[0];
+  return `background:${sc.dot}`;
+}
+function schemeLabelStyle(s) {
+  const sc = COL_SCHEMES[s] || COL_SCHEMES[0];
+  return `color:${sc.text}`;
+}
+function schemeBadgeStyle(s) {
+  const sc = COL_SCHEMES[s] || COL_SCHEMES[0];
+  return `background:${sc.tag};color:${sc.tt}`;
+}
+
+function renderBoard(){
+  const b=curBoard(); if (!b) return;
+  const inner=document.getElementById('boardInner');
+  inner.innerHTML='';
+
+  b.cols.forEach(col=>{
+    const cc=b.cards[col.id]||[];
+    const wrap=document.createElement('div');
+    wrap.className='column';
+    wrap.dataset.col=col.id;
+    wrap.innerHTML=`
+      <div class="col-head" style="${schemeHeadStyle(col.s)}">
+        <div class="col-dot" style="${schemeDotStyle(col.s)}" title="Изменить цвет" onclick="openColSchemePopup(event,'${col.id}')"></div>
+        <input class="col-label-input" id="cli-${col.id}" value="${esc(col.label)}"
+          style="${schemeLabelStyle(col.s)}"
+          onchange="renameCol('${col.id}',this.value)"
+          onblur="renameCol('${col.id}',this.value)" />
+        <div class="col-badge" style="${schemeBadgeStyle(col.s)}">${cc.length}</div>
+        <button class="col-del-btn" onclick="confirmDelCol('${col.id}')" title="Удалить колонку">
+          <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="col-body" id="cb-${col.id}">
+        <div class="add-wrap">
+          <button class="add-trigger" id="at-${col.id}" onclick="openAdd('${col.id}')">
+            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Добавить карточку
+          </button>
+          <div class="add-form" id="af-${col.id}">
+            <textarea id="atx-${col.id}" placeholder="Введите текст…" rows="3"></textarea>
+            <div class="add-form-actions">
+              <button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="closeAdd('${col.id}')">Отмена</button>
+              <button class="btn btn-primary" style="padding:4px 10px;font-size:12px" onclick="addCard('${col.id}')">Добавить</button>
+            </div>
+          </div>
+        </div>
+        ${cc.length===0?'<div class="empty-hint">Перетащите сюда карточку или добавьте новую</div>':''}
+        ${cc.map(c=>cardHTML(c)).join('')}
+      </div>`;
+    inner.appendChild(wrap);
+    cc.forEach(c=>{
+      const el=document.getElementById('card-'+c.id);
+      if (el) el.addEventListener('mousedown',e=>onCardDown(e,c.id));
+    });
+  });
+
+  // Add column button
+  const btn=document.createElement('button');
+  btn.className='add-col-btn'; btn.onclick=openAddCol;
+  btn.innerHTML=`<svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+    <rect x="3" y="3" width="18" height="18" rx="3"/>
+    <line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+  </svg>Добавить колонку`;
+  inner.appendChild(btn);
+}
+
+function cardHTML(c){
+  const bgStyle = c.color ? `style="--card-bg:${c.color}"` : '';
+  return `<div class="card" id="card-${c.id}" ${bgStyle}>
+    <div class="card-text">${esc(c.text)}</div>
+    <div class="card-footer">
+      <button class="vote-btn ${c.voted?'voted':''}" onclick="vote(${c.id})">
+        <svg fill="${c.voted?'currentColor':'none'}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
+          <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+        </svg>
+        ${c.votes}
+      </button>
+      <div class="card-spacer"></div>
+      <button class="card-color-btn" onclick="openCardColorPopup(event,${c.id})" title="Цвет карточки">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M12 2a10 10 0 1 0 10 10"/><circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v4M12 18v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M2 12h4M18 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+        </svg>
+      </button>
+      <button class="card-del-btn" onclick="delCard(${c.id})" title="Удалить">
+        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+        </svg>
+      </button>
+    </div>
+  </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════
+   TIMER
+   ══════════════════════════════════════════════════════════ */
+let timer={secs:300,running:false,iv:null};
+const fmt=s=>`${Math.floor(Math.max(0,s)/60)}:${String(Math.max(0,s)%60).padStart(2,'0')}`;
+function updateTimerUI(){
+  document.getElementById('timerDisplay').textContent=fmt(timer.secs);
+  const p=document.getElementById('timerPill');
+  p.className='timer-pill'+(timer.running?' running':timer.secs<=0?' expired':'');
+}
+function openTimerModal(){
+  document.getElementById('timerMinInput').value=Math.max(1,Math.ceil(timer.secs/60));
+  document.getElementById('timerActionBtn').textContent=timer.running?'Остановить':'Запустить';
+  document.getElementById('timerOverlay').classList.add('open');
+}
+function handleTimerAction(){
+  if (timer.running){
+    clearInterval(timer.iv);timer.iv=null;timer.running=false;
+    timer.secs=(parseInt(document.getElementById('timerMinInput').value)||5)*60;
+    updateTimerUI();closeOverlay('timerOverlay');
+  } else {
+    timer.secs=(parseInt(document.getElementById('timerMinInput').value)||5)*60;
+    timer.running=true;updateTimerUI();closeOverlay('timerOverlay');
+    timer.iv=setInterval(()=>{
+      timer.secs--;updateTimerUI();
+      if(timer.secs<=0){clearInterval(timer.iv);timer.iv=null;timer.running=false;updateTimerUI();showToast('⏰ Время вышло!');}
+    },1000);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   EXPORT
+   ══════════════════════════════════════════════════════════ */
+function openExport(){
+  const b=curBoard(); if (!b){showToast('Выберите доску');return;}
+  let out=`${b.name}\n${'─'.repeat(42)}\n\n`;
+  b.cols.forEach(col=>{
+    out+=`${col.label.toUpperCase()}\n`;
+    const sorted=[...(b.cards[col.id]||[])].sort((a,z)=>z.votes-a.votes);
+    if (!sorted.length) out+='  (нет карточек)\n';
+    else sorted.forEach(c=>out+=`  [${c.votes}▲] ${c.text}\n`);
+    out+='\n';
+  });
+  document.getElementById('exportContent').textContent=out;
+  document.getElementById('exportOverlay').classList.add('open');
+}
+function copyExport(){
+  navigator.clipboard.writeText(document.getElementById('exportContent').textContent)
+    .then(()=>showToast('Скопировано!')).catch(()=>showToast('Не удалось скопировать'));
+}
+
+/* ══════════════════════════════════════════════════════════
+   UTIL
+   ══════════════════════════════════════════════════════════ */
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function closeOverlay(id){ document.getElementById(id)?.classList.remove('open'); }
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2600);
+}
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
+});
+document.addEventListener('keydown',e=>{
+  if ((e.ctrlKey||e.metaKey)&&e.key==='Enter'){
+    const b=curBoard(); if (!b) return;
+    b.cols.forEach(col=>{ const f=document.getElementById('af-'+col.id); if(f?.classList.contains('open')) addCard(col.id); });
+  }
+  if (e.key==='Escape'){
+    document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open'));
+    closeColorPopup();
+    const b=curBoard(); if(b) b.cols.forEach(col=>{try{closeAdd(col.id);}catch(e){}});
+  }
+});
+document.getElementById('newBoardName').addEventListener('keydown',e=>{if(e.key==='Enter')confirmNewBoard();});
+document.getElementById('newColName').addEventListener('keydown',e=>{if(e.key==='Enter')confirmNewCol();});
+
+/* ══════════════════════════════════════════════════════════
+   BOOT
+   ══════════════════════════════════════════════════════════ */
+async function boot(){
+  initFirebase();
+  if (firebaseOk){
+    try { const snap=await boardsCol().get(); snap.forEach(d=>{boards[d.id]=d.data();}); } catch(e){console.error(e);}
+    subscribeBoards();
+  } else {
+    lsLoad();
+  }
+  document.getElementById('loadingScreen').classList.add('hidden');
+  document.getElementById('appShell').style.display='';
+  updateTimerUI(); renderSidebar();
+  const first=Object.values(boards).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))[0];
+  if (first) selectBoard(first.id);
+}
+boot();
+</script>
+</body>
+</html>
