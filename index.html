@@ -65,6 +65,48 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      transition: width .2s ease;
+    }
+
+    .sidebar.collapsed {
+      width: 72px;
+    }
+
+    .sidebar.collapsed .sidebar-logo {
+      justify-content: center;
+    }
+
+    .sidebar.collapsed .sidebar-logo .logo-text,
+    .sidebar.collapsed .sb-label,
+    .sidebar.collapsed .sb-boards,
+    .sidebar.collapsed .sb-action-btn:not(.sidebar-toggle) {
+      display: none;
+    }
+
+    .sidebar.collapsed .sidebar-toggle .toggle-label {
+      display: none;
+    }
+
+    .sb-footer {
+      margin-top: auto;
+    }
+
+    .sidebar.collapsed .sb-footer {
+      align-items: center;
+      padding: 10px 8px;
+    }
+
+    .sidebar.collapsed .sidebar-toggle {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      margin: 0 auto;
+      justify-content: center;
+    }
+
+    .sidebar.collapsed .sidebar-toggle svg {
+      width: 18px;
+      height: 18px;
     }
 
     .sidebar-logo {
@@ -1195,7 +1237,7 @@
             <rect x="7" y="7" width="4" height="4" rx="1" />
           </svg>
         </div>
-        RetroBoard
+        <span class="logo-text">RetroBoard</span>
       </div>
       <div class="sb-label">Доски</div>
       <div class="sb-boards" id="sbBoards"></div>
@@ -1213,6 +1255,12 @@
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
           </svg>
           Копировать доску
+        </button>
+        <button class="sb-action-btn sidebar-toggle" id="sidebarToggleBtn" onclick="toggleSidebar()" title="Свернуть боковую панель">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M8 6l6 6-6 6" />
+          </svg>
+          <span class="toggle-label">Свернуть</span>
         </button>
       </div>
     </aside>
@@ -1589,6 +1637,31 @@
       document.getElementById('topbarName').setAttribute('readonly', '');
       document.getElementById('copyBoardBtn').style.display = 'none';
       renderSidebar();
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.sidebar');
+      if (!sidebar) return;
+      const collapsed = sidebar.classList.toggle('collapsed');
+      localStorage.setItem('rb_sidebar_collapsed', collapsed ? '1' : '0');
+      updateSidebarToggleButton(collapsed);
+    }
+
+    function updateSidebarToggleButton(collapsed) {
+      const btn = document.getElementById('sidebarToggleBtn');
+      if (!btn) return;
+      btn.title = collapsed ? 'Развернуть боковую панель' : 'Свернуть боковую панель';
+      btn.querySelector('.toggle-label').textContent = collapsed ? 'Развернуть' : 'Свернуть';
+      btn.querySelector('svg path').setAttribute('d', collapsed ? 'M8 6l6 6-6 6' : 'M16 6l-6 6 6 6');
+    }
+
+    function initSidebarState() {
+      const sidebar = document.querySelector('.sidebar');
+      if (!sidebar) return;
+      const saved = localStorage.getItem('rb_sidebar_collapsed');
+      const collapsed = saved === '1';
+      if (collapsed) sidebar.classList.add('collapsed');
+      updateSidebarToggleButton(collapsed);
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -2178,7 +2251,7 @@
       }
       document.getElementById('loadingScreen').classList.add('hidden');
       document.getElementById('appShell').style.display = '';
-      initGlobalTimer(); renderSidebar();
+      initGlobalTimer(); initSidebarState(); renderSidebar();
       const first = Object.values(boards).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
       if (first) selectBoard(first.id);
     }
