@@ -23,6 +23,7 @@
       --bg: #F5F3EE;
       --surface: #FFFFFF;
       --surface2: #EFEDE8;
+      --surface3: #E8E5DF;
       --border: rgba(0, 0, 0, 0.09);
       --border2: rgba(0, 0, 0, 0.17);
       --text: #1A1916;
@@ -37,6 +38,23 @@
       --radius-lg: 14px;
       --shadow: 0 1px 3px rgba(0, 0, 0, 0.07), 0 4px 16px rgba(0, 0, 0, 0.05);
       --shadow-lg: 0 4px 28px rgba(0, 0, 0, 0.14);
+    }
+
+    body.dark {
+      --bg: #0F172A;
+      --surface: #111827;
+      --surface2: #1E293B;
+      --surface3: #293462;
+      --border: rgba(255, 255, 255, 0.08);
+      --border2: rgba(255, 255, 255, 0.12);
+      --text: #F8FAFC;
+      --muted: #A6B0CF;
+      --hint: #8A9BB7;
+      --accent: #7C3AED;
+      --accent-bg: rgba(124, 58, 237, 0.12);
+      --accent-t: #E9D7FE;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 4px 16px rgba(0, 0, 0, 0.22);
+      --shadow-lg: 0 4px 28px rgba(0, 0, 0, 0.28);
     }
 
     html,
@@ -796,6 +814,7 @@
       user-select: none;
       transition: border-color .15s, box-shadow .15s;
       background: var(--card-bg, var(--surface2));
+      color: var(--card-text, var(--text));
       /* ← custom colour support */
     }
 
@@ -829,7 +848,7 @@
     .card-text {
       font-size: 13px;
       line-height: 1.55;
-      color: var(--text);
+      color: inherit;
       word-break: break-word;
     }
 
@@ -841,8 +860,8 @@
 
     .vote-btn {
       font-family: 'DM Sans', sans-serif;
-      background: rgba(255, 255, 255, .7);
-      border: 1px solid var(--border2);
+      background: var(--card-btn-bg, rgba(255, 255, 255, .7));
+      border: 1px solid var(--card-btn-border, var(--border2));
       border-radius: 99px;
       padding: 2px 9px;
       font-size: 12px;
@@ -851,7 +870,7 @@
       display: flex;
       align-items: center;
       gap: 4px;
-      color: var(--muted);
+      color: var(--card-btn-fg, var(--muted));
       transition: all .15s;
     }
 
@@ -862,10 +881,26 @@
     }
 
     .vote-btn.voted {
-      background: var(--accent-bg);
+      background: var(--accent);
       border-color: var(--accent);
-      color: var(--accent-t);
+      color: #fff;
       font-weight: 600;
+    }
+
+    .dark .vote-btn {
+      background: var(--card-btn-bg, rgba(255, 255, 255, .16));
+      border-color: var(--card-btn-border, rgba(255, 255, 255, .24));
+      color: var(--card-btn-fg, var(--muted));
+    }
+
+    .dark .vote-btn:hover {
+      background: rgba(255, 255, 255, .24);
+    }
+
+    .dark .vote-btn.voted {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
     }
 
     .vote-btn svg {
@@ -1307,6 +1342,12 @@
         <div class="timer-pill" id="timerPill" onclick="openTimerModal()">
           <div class="t-dot"></div><span id="timerDisplay">5:00</span>
         </div>
+        <button class="btn btn-ghost theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" title="Переключить тему">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
+          </svg>
+          <span id="themeToggleLabel">Тёмная</span>
+        </button>
         <button class="btn" onclick="openExport()">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -1694,6 +1735,31 @@
       updateSidebarToggleButton(collapsed);
     }
 
+    function applyTheme(mode) {
+      const body = document.body;
+      const dark = mode === 'dark';
+      body.classList.toggle('dark', dark);
+      localStorage.setItem('rb_theme', dark ? 'dark' : 'light');
+      const label = document.getElementById('themeToggleLabel');
+      if (label) label.textContent = dark ? 'Светлая' : 'Тёмная';
+      const btn = document.getElementById('themeToggleBtn');
+      if (btn) btn.title = dark ? 'Включить светлую тему' : 'Включить тёмную тему';
+    }
+
+    function toggleTheme() {
+      applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
+    }
+
+    function initTheme() {
+      const saved = localStorage.getItem('rb_theme');
+      if (saved === 'dark' || saved === 'light') {
+        applyTheme(saved);
+      } else {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(prefersDark ? 'dark' : 'light');
+      }
+    }
+
     /* ══════════════════════════════════════════════════════════
        SIDEBAR RENDER
        ══════════════════════════════════════════════════════════ */
@@ -2046,8 +2112,32 @@
       inner.appendChild(btn);
     }
 
+    function getContrastColor(color) {
+      if (!color) return '#1A1916';
+      let r, g, b;
+      if (color.startsWith('#')) {
+        let hex = color.slice(1);
+        if (hex.length === 3) {
+          hex = hex.split('').map(ch => ch + ch).join('');
+        }
+        r = parseInt(hex.slice(0, 2), 16);
+        g = parseInt(hex.slice(2, 4), 16);
+        b = parseInt(hex.slice(4, 6), 16);
+      } else if (color.startsWith('rgb')) {
+        const nums = color.match(/\d+/g);
+        if (!nums) return '#1A1916';
+        [r, g, b] = nums.map(Number);
+      } else {
+        return '#1A1916';
+      }
+      const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+      return luminance > 0.65 ? '#1A1916' : '#fff';
+    }
+
     function cardHTML(c) {
-      const bgStyle = c.color ? `style="--card-bg:${c.color}"` : '';
+      const contrastText = c.color ? getContrastColor(c.color) : null;
+      const btnBg = contrastText === '#fff' ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.7)';
+      const bgStyle = c.color ? `style="--card-bg:${c.color};--card-text:${contrastText};--card-btn-bg:${btnBg};--card-btn-fg:${contrastText}"` : '';
       return `<div class="card" id="card-${c.id}" ${bgStyle}>
     <div class="card-text">${esc(c.text)}</div>
     <div class="card-footer">
@@ -2281,7 +2371,7 @@
       }
       document.getElementById('loadingScreen').classList.add('hidden');
       document.getElementById('appShell').style.display = '';
-      initGlobalTimer(); initSidebarState(); renderSidebar();
+      initGlobalTimer(); initTheme(); initSidebarState(); renderSidebar();
       const first = Object.values(boards).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
       if (first) selectBoard(first.id);
     }
