@@ -1261,21 +1261,6 @@
       font-weight: 500;
     }
 
-    .export-area {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 13px;
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      color: var(--muted);
-      white-space: pre-wrap;
-      line-height: 1.65;
-      max-height: 220px;
-      overflow-y: auto;
-      margin-bottom: 18px;
-    }
-
     /* ── LOADING ── */
     .loading-screen {
       position: fixed;
@@ -1410,14 +1395,6 @@
           <div class="t-dot"></div><span id="timerDisplay">5:00</span>
         </div>
         <!-- theme toggle removed -->
-        <button class="btn" onclick="openExport()">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          Экспорт
-        </button>
       </div>
 
       <div class="board-canvas" id="boardCanvas">
@@ -1517,25 +1494,6 @@
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeOverlay('timerOverlay')">Отмена</button>
         <button class="btn btn-primary" id="timerActionBtn" onclick="handleTimerAction()">Запустить</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Export -->
-  <div class="overlay" id="exportOverlay">
-    <div class="modal">
-      <div class="modal-title">Экспорт результатов</div>
-      <div class="modal-sub">Карточки отсортированы по голосам.</div>
-      <div class="export-area" id="exportContent"></div>
-      <div class="modal-actions">
-        <button class="btn btn-ghost" onclick="closeOverlay('exportOverlay')">Закрыть</button>
-        <button class="btn btn-primary" onclick="copyExport()">
-          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <rect x="9" y="9" width="13" height="13" rx="2" />
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2v1" />
-          </svg>
-          Копировать
-        </button>
       </div>
     </div>
   </div>
@@ -2396,26 +2354,7 @@
       }
     }
 
-    /* ══════════════════════════════════════════════════════════
-       EXPORT
-       ══════════════════════════════════════════════════════════ */
-    function openExport() {
-      const b = curBoard(); if (!b) { showToast('Выберите доску'); return; }
-      let out = `${b.name}\n${'─'.repeat(42)}\n\n`;
-      b.cols.forEach(col => {
-        out += `${col.label.toUpperCase()}\n`;
-        const sorted = [...(b.cards[col.id] || [])].sort((a, z) => z.votes - a.votes);
-        if (!sorted.length) out += '  (нет карточек)\n';
-        else sorted.forEach(c => out += `  [${c.votes}▲] ${c.text}\n`);
-        out += '\n';
-      });
-      document.getElementById('exportContent').textContent = out;
-      document.getElementById('exportOverlay').classList.add('open');
-    }
-    function copyExport() {
-      navigator.clipboard.writeText(document.getElementById('exportContent').textContent)
-        .then(() => showToast('Скопировано!')).catch(() => showToast('Не удалось скопировать'));
-    }
+    /* Export removed */
 
     /* ══════════════════════════════════════════════════════════
        UTIL
