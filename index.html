@@ -40,22 +40,8 @@
       --shadow-lg: 0 4px 28px rgba(0, 0, 0, 0.14);
     }
 
-    body.dark {
-      --bg: #0F172A;
-      --surface: #111827;
-      --surface2: #1E293B;
-      --surface3: #293462;
-      --border: rgba(255, 255, 255, 0.08);
-      --border2: rgba(255, 255, 255, 0.12);
-      --text: #F8FAFC;
-      --muted: #A6B0CF;
-      --hint: #8A9BB7;
-      --accent: #7C3AED;
-      --accent-bg: rgba(124, 58, 237, 0.12);
-      --accent-t: #E9D7FE;
-      --shadow: 0 1px 3px rgba(0, 0, 0, 0.18), 0 4px 16px rgba(0, 0, 0, 0.22);
-      --shadow-lg: 0 4px 28px rgba(0, 0, 0, 0.28);
-    }
+    /* Dark theme removed: app is light-only.
+       If you need to reintroduce a dark theme later, restore variables here. */
 
     html,
     body {
@@ -858,10 +844,11 @@
       gap: 5px;
     }
 
-    .vote-btn {
+    .vote-btn,
+    .comment-btn {
       font-family: 'DM Sans', sans-serif;
-      background: var(--card-btn-bg, rgba(255, 255, 255, .7));
-      border: 1px solid var(--card-btn-border, var(--border2));
+      background: transparent;
+      border: 1px solid var(--action-btn-border, rgba(60, 60, 60, .12));
       border-radius: 99px;
       padding: 2px 9px;
       font-size: 12px;
@@ -869,47 +856,127 @@
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 4px;
-      color: var(--card-btn-fg, var(--muted));
-      transition: all .15s;
+      gap: 6px;
+      color: var(--action-btn-fg, rgba(60, 60, 60, .72));
+      transition: all .12s;
     }
 
-    .vote-btn:hover {
+    .vote-btn:hover,
+    .comment-btn:hover {
       border-color: var(--accent);
       color: var(--accent);
-      background: var(--accent-bg);
+      background: transparent;
     }
 
-    .vote-btn.voted {
-      background: var(--accent);
+    .vote-btn.voted,
+    .comment-btn.active {
+      background: transparent;
       border-color: var(--accent);
-      color: #fff;
+      color: var(--accent);
       font-weight: 600;
     }
 
-    .dark .vote-btn {
-      background: var(--card-btn-bg, rgba(255, 255, 255, .16));
-      border-color: var(--card-btn-border, rgba(255, 255, 255, .24));
-      color: var(--card-btn-fg, var(--muted));
+    /* Dark-mode button overrides removed */
+
+    .vote-btn svg,
+    .comment-btn svg {
+      width: 12px;
+      height: 12px;
+      display: block;
     }
 
-    .dark .vote-btn:hover {
-      background: rgba(255, 255, 255, .24);
+    .vote-btn svg path,
+    .vote-btn svg circle,
+    .vote-btn svg polyline,
+    .comment-btn svg path,
+    .comment-btn svg circle,
+    .comment-btn svg polyline {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
-    .dark .vote-btn.voted {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
+    .comment-count {
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      min-width: 18px;
+      text-align: center;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--action-btn-fg, rgba(60, 60, 60, .72));
     }
 
-    .vote-btn svg {
-      width: 11px;
-      height: 11px;
+    .comment-btn.active .comment-count {
+      color: var(--accent);
     }
 
     .card-spacer {
       flex: 1;
+    }
+
+    .comment-section {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border2);
+    }
+
+    .comment-section.open {
+      display: flex;
+    }
+
+    .comments-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .comment-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px;
+      border-radius: var(--radius);
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+    }
+
+    .comment-item .comment-text {
+      flex: 1;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    /* Dark-mode comment-item overrides removed */
+
+    .comment-form textarea {
+      width: 100%;
+      min-height: 72px;
+      padding: 10px 11px;
+      border-radius: 10px;
+      border: 1px solid var(--border2);
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      resize: vertical;
+    }
+
+    .comment-form textarea:focus {
+      border-color: var(--accent);
+    }
+
+    .comment-empty {
+      font-size: 12px;
+      color: var(--muted);
     }
 
     /* card colour swatch button */
@@ -1342,12 +1409,7 @@
         <div class="timer-pill" id="timerPill" onclick="openTimerModal()">
           <div class="t-dot"></div><span id="timerDisplay">5:00</span>
         </div>
-        <button class="btn btn-ghost theme-toggle" id="themeToggleBtn" onclick="toggleTheme()" title="Переключить тему">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
-          </svg>
-          <span id="themeToggleLabel">Тёмная</span>
-        </button>
+        <!-- theme toggle removed -->
         <button class="btn" onclick="openExport()">
           <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -1610,11 +1672,12 @@
        ══════════════════════════════════════════════════════════ */
     const DEFAULT_COLS = [{ id: 'c1', label: 'Start', s: 0 }, { id: 'c2', label: 'Stop', s: 1 }, { id: 'c3', label: 'Continue', s: 2 }];
     const DEFAULT_CARDS = {
-      c1: [{ id: 1, text: 'Ежедневные код-ревью по утрам', votes: 3, voted: false, color: null }],
-      c2: [{ id: 2, text: 'Затяжные встречи без повестки', votes: 5, voted: false, color: null }],
-      c3: [{ id: 3, text: 'Чёткие критерии готовности', votes: 4, voted: false, color: null }],
+      c1: [{ id: 1, text: 'Ежедневные код-ревью по утрам', votes: 3, voted: false, color: null, comments: [] }],
+      c2: [{ id: 2, text: 'Затяжные встречи без повестки', votes: 5, voted: false, color: null, comments: [] }],
+      c3: [{ id: 3, text: 'Чёткие критерии готовности', votes: 4, voted: false, color: null, comments: [] }],
     };
     let boards = {}, activeBoardId = null;
+    const commentOpenState = new Set();
     function curBoard() { return boards[activeBoardId] || null; }
     function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
@@ -1735,30 +1798,7 @@
       updateSidebarToggleButton(collapsed);
     }
 
-    function applyTheme(mode) {
-      const body = document.body;
-      const dark = mode === 'dark';
-      body.classList.toggle('dark', dark);
-      localStorage.setItem('rb_theme', dark ? 'dark' : 'light');
-      const label = document.getElementById('themeToggleLabel');
-      if (label) label.textContent = dark ? 'Светлая' : 'Тёмная';
-      const btn = document.getElementById('themeToggleBtn');
-      if (btn) btn.title = dark ? 'Включить светлую тему' : 'Включить тёмную тему';
-    }
-
-    function toggleTheme() {
-      applyTheme(document.body.classList.contains('dark') ? 'light' : 'dark');
-    }
-
-    function initTheme() {
-      const saved = localStorage.getItem('rb_theme');
-      if (saved === 'dark' || saved === 'light') {
-        applyTheme(saved);
-      } else {
-        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        applyTheme(prefersDark ? 'dark' : 'light');
-      }
-    }
+    /* Dark theme JS removed; app runs light-only */
 
     /* ══════════════════════════════════════════════════════════
        SIDEBAR RENDER
@@ -1943,7 +1983,7 @@
       const b = curBoard(); if (!b) return;
       const val = document.getElementById('atx-' + colId).value.trim(); if (!val) return;
       b._nextId = (b._nextId || 100) + 1;
-      b.cards[colId].push({ id: b._nextId, text: val, votes: 0, voted: false, color: null });
+      b.cards[colId].push({ id: b._nextId, text: val, votes: 0, voted: false, color: null, comments: [] });
       fbSave(b); lsSave(); renderBoard(); showToast('Карточка добавлена');
     }
     function delCard(cardId) {
@@ -1966,7 +2006,7 @@
     let dnd = { active: false, cardId: null, ghost: null, ox: 0, oy: 0, targetCol: null, insertBefore: null };
 
     function onCardDown(e, cardId) {
-      if (e.target.closest('button')) return;
+      if (e.target.closest('button, textarea, input, select, .comment-item, .comment-form, .comment-btn')) return;
       e.preventDefault();
       const el = document.getElementById('card-' + cardId);
       const r = el.getBoundingClientRect();
@@ -2134,19 +2174,51 @@
       return luminance > 0.65 ? '#1A1916' : '#fff';
     }
 
+    function toggleComments(cardId) {
+      if (commentOpenState.has(cardId)) commentOpenState.delete(cardId);
+      else commentOpenState.add(cardId);
+      renderBoard();
+    }
+
+    function saveComment(cardId) {
+      const b = curBoard(); if (!b) return;
+      const col = colOfCard(cardId); if (!col) return;
+      const c = b.cards[col].find(c => c.id === cardId); if (!c) return;
+      const input = document.getElementById('comment-input-' + cardId);
+      if (!input) return;
+      const text = input.value.trim(); if (!text) return;
+      c.comments = c.comments || [];
+      c.comments.push({ id: 'cm_' + uid(), text, createdAt: Date.now() });
+      commentOpenState.add(cardId);
+      input.value = '';
+      fbSave(b); lsSave(); renderBoard();
+    }
+
+
     function cardHTML(c) {
       const contrastText = c.color ? getContrastColor(c.color) : null;
       const btnBg = contrastText === '#fff' ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.7)';
       const bgStyle = c.color ? `style="--card-bg:${c.color};--card-text:${contrastText};--card-btn-bg:${btnBg};--card-btn-fg:${contrastText}"` : '';
+      const comments = c.comments || [];
+      const count = comments.length;
+      const commentCount = count ? `<span class="comment-count">${count}</span>` : '';
+      const openClass = commentOpenState.has(c.id) ? ' open' : '';
+      const voteLabel = c.votes > 0 ? `${c.votes}` : '';
       return `<div class="card" id="card-${c.id}" ${bgStyle}>
     <div class="card-text">${esc(c.text)}</div>
     <div class="card-footer">
       <button class="vote-btn ${c.voted ? 'voted' : ''}" onclick="vote(${c.id})">
-        <svg fill="${c.voted ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
           <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
         </svg>
-        ${c.votes}
+        ${voteLabel}
+      </button>
+      <button class="comment-btn${commentOpenState.has(c.id) ? ' active' : ''}" onclick="toggleComments(${c.id})" title="Комментарии">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        ${commentCount}
       </button>
       <div class="card-spacer"></div>
       <button class="card-color-btn" onclick="openCardColorPopup(event,${c.id})" title="Цвет карточки">
@@ -2161,6 +2233,19 @@
           <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
         </svg>
       </button>
+    </div>
+    <div class="comment-section${openClass}" id="comments-${c.id}">
+      <div class="comments-list">
+        ${count ? comments.map(comment => `
+          <div class="comment-item">
+            <div class="comment-text">${esc(comment.text)}</div>
+          </div>
+        `).join('') : '<div class="comment-empty">Нет комментариев</div>'}
+      </div>
+      <div class="comment-form">
+        <textarea id="comment-input-${c.id}" placeholder="Напишите комментарий" rows="3"></textarea>
+        <button class="btn btn-primary" onclick="saveComment(${c.id})">Сохранить</button>
+      </div>
     </div>
   </div>`;
     }
@@ -2371,7 +2456,7 @@
       }
       document.getElementById('loadingScreen').classList.add('hidden');
       document.getElementById('appShell').style.display = '';
-      initGlobalTimer(); initTheme(); initSidebarState(); renderSidebar();
+      initGlobalTimer(); initSidebarState(); renderSidebar();
       const first = Object.values(boards).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
       if (first) selectBoard(first.id);
     }
