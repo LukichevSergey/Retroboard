@@ -1,0 +1,84 @@
+/* ── APP SHELL & TOPBAR ── */
+.app { display: flex; height: 100vh; overflow: hidden; min-width: 0; }
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.topbar {
+  height: var(--header-h);
+  flex-shrink: 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.topbar-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  padding: 3px 8px;
+  outline: none;
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  max-width: 300px;
+  transition: all .15s;
+}
+.topbar-name:hover:not([readonly]) { border-color: var(--border2); background: var(--surface2); }
+.topbar-name:focus { border-color: var(--accent); background: var(--surface); }
+
+.topbar-spacer { flex: 1; }
+
+.sync-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  transition: all .3s;
+}
+.sync-badge .sd { width: 6px; height: 6px; border-radius: 50%; background: var(--hint); flex-shrink: 0; }
+.sync-badge.syncing { border-color: #EF9F27; background: #FAEEDA; color: #854F0B; }
+.sync-badge.syncing .sd { background: #EF9F27; animation: spin 1s linear infinite; }
+.sync-badge.ok { border-color: #639922; background: #EAF3DE; color: #3B6D11; }
+.sync-badge.ok .sd { background: #639922; }
+.sync-badge.offline { border-color: #E24B4A; background: #FCEBEB; color: #A32D2D; }
+.sync-badge.offline .sd { background: #E24B4A; }
+
+.timer-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 5px 13px;
+  cursor: pointer;
+  user-select: none;
+  transition: all .2s;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'DM Mono', monospace;
+}
+.timer-pill:hover { border-color: var(--border2); }
+.timer-pill .t-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--hint); }
+.timer-pill.running { background: #EAF3DE; border-color: #639922; color: #3B6D11; }
+.timer-pill.running .t-dot { background: #639922; animation: pulse 1s infinite; }
+.timer-pill.expired { background: #FCEBEB; border-color: #E24B4A; color: #A32D2D; }
+.timer-pill.expired .t-dot { background: #E24B4A; }
