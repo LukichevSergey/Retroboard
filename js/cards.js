@@ -43,10 +43,18 @@ function delCard(cardId) {
   if (!board) return;
   const col = colOfCard(cardId);
   if (!col) return;
+  const card = board.cards[col].find(c => c.id === cardId);
+  if (!card) return;
+  
+  // Ask for confirmation before deleting
+  const confirmed = window.confirm('Вы уверены, что хотите удалить карточку "' + card.text.substring(0, 30) + (card.text.length > 30 ? '...' : '') + '"?\n\nЭто действие нельзя отменить.');
+  if (!confirmed) return;
+  
   board.cards[col] = board.cards[col].filter(card => card.id !== cardId);
   fbSave(board);
   lsSave();
   renderBoard();
+  showToast('Карточка удалена');
 }
 
 function vote(cardId) {
