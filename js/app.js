@@ -28,8 +28,10 @@ async function boot() {
       console.error(error);
     }
     subscribeBoards(handleBoardSnapshot, error => console.error(error));
+    if (typeof subscribeBugReport === 'function') subscribeBugReport();
   } else {
     lsLoad();
+    if (typeof loadBugReportLocal === 'function') loadBugReportLocal();
   }
 
   document.getElementById('loadingScreen')?.classList.add('hidden');

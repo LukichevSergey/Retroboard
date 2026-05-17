@@ -44,6 +44,11 @@
 .mrow span { font-size: 13px; color: var(--muted); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
+.bug-modal { max-width: 520px; width: min(520px, calc(100vw - 40px)); max-height: calc(100vh - 80px); overflow: hidden; }
+.bug-modal .modal-body { max-height: calc(100vh - 250px); overflow-y: auto; padding-right: 4px; }
+.bug-modal textarea { width: 100%; min-height: 220px; max-height: 320px; resize: none; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.6; outline: none; }
+.bug-modal textarea:focus { border-color: var(--accent); }
+
 /* scheme grid */
 .scheme-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .scheme-tile { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all .15s; }

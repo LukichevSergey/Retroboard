@@ -79,6 +79,13 @@
         <div class="timer-pill" id="timerPill" onclick="openTimerModal()">
           <div class="t-dot"></div><span id="timerDisplay">5:00</span>
         </div>
+        <button class="bug-btn" id="bugBtn" onclick="openBugReportModal()" title="Баг-ноут">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2 2 20h20L12 2z" />
+            <path d="M12 8v4" />
+            <path d="M12 16h.01" />
+          </svg>
+        </button>
         <!-- theme toggle removed -->
       </div>
 
@@ -183,6 +190,23 @@
     </div>
   </div>
 
+  <div class="overlay" id="bugOverlay">
+    <div class="modal bug-modal">
+      <div class="modal-title">Баг-ноут</div>
+      <div class="modal-sub">Записывайте найденные баги, комментарии и пожелания</div>
+      <div class="modal-body">
+        <div class="mfield">
+          <label>Описание бага</label>
+          <textarea id="bugReportTextarea" rows="8" placeholder="Опишите проблему, шаги воспроизведения, что нужно исправить или доработать..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="closeOverlay('bugOverlay')">Отмена</button>
+        <button class="btn btn-primary" onclick="saveBugReport()">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <!-- Firebase -->
@@ -199,6 +223,7 @@
   <script src="js/columns.js"></script>
   <script src="js/cards.js"></script>
   <script src="js/timer.js"></script>
+  <script src="js/bugs.js"></script>
   <script src="js/app.js"></script>
 
 </body>
