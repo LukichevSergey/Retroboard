@@ -1,0 +1,36 @@
+/* ── RESET & VARIABLES ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #F5F3EE;
+  --surface: #FFFFFF;
+  --surface2: #EFEDE8;
+  --surface3: #E8E5DF;
+  --border: rgba(0, 0, 0, 0.09);
+  --border2: rgba(0, 0, 0, 0.17);
+  --text: #1A1916;
+  --muted: #6B6860;
+  --hint: #A09E98;
+  --accent: #4A3FBF;
+  --accent-bg: #EEEDFE;
+  --accent-t: #3C3489;
+  --sidebar-w: 224px;
+  --header-h: 52px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.07), 0 4px 16px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 4px 28px rgba(0, 0, 0, 0.14);
+}
+
+html, body {
+  height: 100%;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}

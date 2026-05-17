@@ -1,0 +1,253 @@
+
+function colOfCard(cardId) {
+  const board = curBoard();
+  if (!board) return null;
+  return Object.keys(board.cards).find(colId => board.cards[colId].some(card => card.id === cardId)) || null;
+}
+
+function openAdd(colId) {
+  const trigger = document.getElementById('at-' + colId);
+  const form = document.getElementById('af-' + colId);
+  if (!form || !trigger) return;
+  trigger.style.display = 'none';
+  form.classList.add('open');
+  setTimeout(() => document.getElementById('atx-' + colId)?.focus(), 30);
+}
+
+function closeAdd(colId) {
+  const trigger = document.getElementById('at-' + colId);
+  const form = document.getElementById('af-' + colId);
+  if (!form || !trigger) return;
+  form.classList.remove('open');
+  trigger.style.display = '';
+  const input = document.getElementById('atx-' + colId);
+  if (input) input.value = '';
+}
+
+function addCard(colId) {
+  const board = curBoard();
+  if (!board) return;
+  const input = document.getElementById('atx-' + colId);
+  const text = input?.value.trim();
+  if (!text) return;
+  board._nextId = (board._nextId || 100) + 1;
+  board.cards[colId].push({ id: board._nextId, text, votes: 0, voted: false, color: null, comments: [] });
+  fbSave(board);
+  lsSave();
+  renderBoard();
+  showToast('Карточка добавлена');
+}
+
+function delCard(cardId) {
+  const board = curBoard();
+  if (!board) return;
+  const col = colOfCard(cardId);
+  if (!col) return;
+  board.cards[col] = board.cards[col].filter(card => card.id !== cardId);
+  fbSave(board);
+  lsSave();
+  renderBoard();
+}
+
+function vote(cardId) {
+  const board = curBoard();
+  if (!board) return;
+  const col = colOfCard(cardId);
+  if (!col) return;
+  const card = board.cards[col].find(card => card.id === cardId);
+  if (!card) return;
+  if (card.voted) {
+    card.votes -= 1;
+    card.voted = false;
+  } else {
+    card.votes += 1;
+    card.voted = true;
+  }
+  fbSave(board);
+  lsSave();
+  renderBoard();
+}
+
+function openCardColorPopup(event, cardId) {
+  event.stopPropagation();
+  state._cardPickerCardId = cardId;
+  const board = curBoard();
+  const columnId = colOfCard(cardId);
+  const card = columnId ? board.cards[columnId].find(card => card.id === cardId) : null;
+  const currentColor = card?.color || null;
+  document.getElementById('colorPopupTitle').textContent = 'Цвет карточки';
+  const swatches = document.getElementById('colorSwatches');
+  swatches.innerHTML = `
+    <div class="swatch none-swatch ${currentColor === null ? 'active' : ''}" title="По умолчанию" onclick="applyCardColor(${cardId},null)">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </div>` +
+    CARD_COLORS.map(color => `
+      <div class="swatch ${currentColor === color.hex ? 'active' : ''}"
+           style="background:${color.hex}; border:1.5px solid rgba(0,0,0,.12);"
+           title="${color.label}"
+           onclick="applyCardColor(${cardId},'${color.hex}')">
+      </div>`).join('');
+  positionPopup(event);
+}
+
+function applyCardColor(cardId, color) {
+  const board = curBoard();
+  if (!board) return;
+  const col = colOfCard(cardId);
+  if (!col) return;
+  const card = board.cards[col].find(card => card.id === cardId);
+  if (!card) return;
+  card.color = color;
+  fbSave(board);
+  lsSave();
+  closeColorPopup();
+  renderBoard();
+}
+
+function toggleComments(cardId) {
+  if (state.commentOpenState.has(cardId)) {
+    state.commentOpenState.delete(cardId);
+  } else {
+    state.commentOpenState.add(cardId);
+  }
+  renderBoard();
+}
+
+function saveComment(cardId) {
+  const board = curBoard();
+  if (!board) return;
+  const col = colOfCard(cardId);
+  if (!col) return;
+  const card = board.cards[col].find(card => card.id === cardId);
+  if (!card) return;
+  const input = document.getElementById('comment-input-' + cardId);
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  card.comments = card.comments || [];
+  card.comments.push({ id: 'cm_' + uid(), text, createdAt: Date.now() });
+  state.commentOpenState.add(cardId);
+  input.value = '';
+  fbSave(board);
+  lsSave();
+  renderBoard();
+}
+
+function onCardDown(event, cardId) {
+  if (event.target.closest('button, textarea, input, select, .comment-item, .comment-form, .comment-btn')) return;
+  event.preventDefault();
+  const cardElement = document.getElementById('card-' + cardId);
+  if (!cardElement) return;
+  const rect = cardElement.getBoundingClientRect();
+  state.dnd = {
+    active: true,
+    cardId,
+    ghost: null,
+    ox: event.clientX - rect.left,
+    oy: event.clientY - rect.top,
+    targetCol: null,
+    insertBefore: null,
+  };
+  const ghost = document.createElement('div');
+  ghost.className = 'card-ghost';
+  ghost.style.cssText = `width:${rect.width}px;left:${event.clientX - state.dnd.ox}px;top:${event.clientY - state.dnd.oy}px`;
+  ghost.textContent = cardElement.querySelector('.card-text')?.textContent || '';
+  document.body.appendChild(ghost);
+  state.dnd.ghost = ghost;
+  cardElement.classList.add('is-dragging');
+  document.addEventListener('mousemove', onDragMove, { passive: true });
+  document.addEventListener('mouseup', onDragUp);
+}
+
+function onDragMove(event) {
+  if (!state.dnd.active || !state.dnd.ghost) return;
+  state.dnd.ghost.style.left = (event.clientX - state.dnd.ox) + 'px';
+  state.dnd.ghost.style.top = (event.clientY - state.dnd.oy) + 'px';
+  document.querySelectorAll('.drop-ind').forEach(el => el.remove());
+  const board = curBoard();
+  if (!board) return;
+  board.cols.forEach(col => document.querySelector(`.column[data-col="${col.id}"]`)?.classList.remove('drag-over'));
+  let targetCol = null;
+  board.cols.some(col => {
+    const body = document.getElementById('cb-' + col.id);
+    if (!body) return false;
+    const rect = body.getBoundingClientRect();
+    if (event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top - 30 && event.clientY <= rect.bottom + 30) {
+      targetCol = col.id;
+      return true;
+    }
+    return false;
+  });
+  state.dnd.targetCol = targetCol;
+  if (!targetCol) return;
+  document.querySelector(`.column[data-col="${targetCol}"]`)?.classList.add('drag-over');
+  const body = document.getElementById('cb-' + targetCol);
+  let insertBefore = null;
+  for (const card of (board.cards[targetCol] || [])) {
+    if (card.id === state.dnd.cardId) continue;
+    const cardEl = document.getElementById('card-' + card.id);
+    if (!cardEl) continue;
+    const rect = cardEl.getBoundingClientRect();
+    if (event.clientY < rect.top + rect.height / 2) {
+      insertBefore = card.id;
+      break;
+    }
+  }
+  state.dnd.insertBefore = insertBefore;
+  const indicator = document.createElement('div');
+  indicator.className = 'drop-ind';
+  if (insertBefore !== null) {
+    const reference = document.getElementById('card-' + insertBefore);
+    if (reference) body.insertBefore(indicator, reference);
+  } else {
+    body.appendChild(indicator);
+  }
+}
+
+function onDragUp() {
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup', onDragUp);
+  document.querySelectorAll('.drop-ind').forEach(el => el.remove());
+  const board = curBoard();
+  if (board) board.cols.forEach(col => document.querySelector(`.column[data-col="${col.id}"]`)?.classList.remove('drag-over'));
+  if (state.dnd.ghost) {
+    state.dnd.ghost.remove();
+    state.dnd.ghost = null;
+  }
+  const cardElement = document.getElementById('card-' + state.dnd.cardId);
+  cardElement?.classList.remove('is-dragging');
+  if (state.dnd.active && state.dnd.targetCol && board) {
+    const fromCol = colOfCard(state.dnd.cardId);
+    if (fromCol) {
+      const cardObject = board.cards[fromCol].find(card => card.id === state.dnd.cardId);
+      board.cards[fromCol] = board.cards[fromCol].filter(card => card.id !== state.dnd.cardId);
+      const insertIndex = state.dnd.insertBefore === null
+        ? board.cards[state.dnd.targetCol].length
+        : board.cards[state.dnd.targetCol].findIndex(card => card.id === state.dnd.insertBefore);
+      board.cards[state.dnd.targetCol].splice(insertIndex < 0 ? board.cards[state.dnd.targetCol].length : insertIndex, 0, cardObject);
+      fbSave(board);
+      lsSave();
+      renderBoard();
+      if (fromCol !== state.dnd.targetCol) showToast('Карточка перемещена');
+    }
+  }
+  state.dnd = { active: false, cardId: null, ghost: null, ox: 0, oy: 0, targetCol: null, insertBefore: null };
+}
+
+document.addEventListener('mousedown', event => {
+  const popup = document.getElementById('colorPopup');
+  if (popup?.classList.contains('open') && !popup.contains(event.target)) {
+    closeColorPopup();
+  }
+});
+
+window.openAdd = openAdd;
+window.closeAdd = closeAdd;
+window.addCard = addCard;
+window.delCard = delCard;
+window.vote = vote;
+window.openCardColorPopup = openCardColorPopup;
+window.applyCardColor = applyCardColor;
+window.toggleComments = toggleComments;
+window.saveComment = saveComment;
+window.onCardDown = onCardDown;
