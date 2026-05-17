@@ -82,3 +82,20 @@
 .timer-pill.running .t-dot { background: #639922; animation: pulse 1s infinite; }
 .timer-pill.expired { background: #FCEBEB; border-color: #E24B4A; color: #A32D2D; }
 .timer-pill.expired .t-dot { background: #E24B4A; }
+
+.bug-btn {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--surface2);
+  padding: 0;
+  cursor: pointer;
+  transition: all .2s;
+  color: var(--text);
+}
+.bug-btn:hover { border-color: var(--border2); background: var(--surface); }
+.bug-btn svg { width: 16px; height: 16px; }

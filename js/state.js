@@ -8,6 +8,8 @@ const state = {
   _colPickerTarget: null,
   _cardPickerCardId: null,
   dnd: { active: false, cardId: null, ghost: null, ox: 0, oy: 0, targetCol: null, insertBefore: null },
+  bugReportText: '',
+  bugReportUnsub: null,
   localTimerSeconds: 300,
   timerRunning: false,
   timerInterval: null,
