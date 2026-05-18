@@ -40,7 +40,7 @@ const DEFAULT_COLS = [
 ];
 
 const DEFAULT_CARDS = {
-  c1: [{ id: 1, text: 'Ежедневные код-ревью по утрам', votes: 3, voted: false, color: null, comments: [] }],
-  c2: [{ id: 2, text: 'Затяжные встречи без повестки', votes: 5, voted: false, color: null, comments: [] }],
-  c3: [{ id: 3, text: 'Чёткие критерии готовности', votes: 4, voted: false, color: null, comments: [] }],
+  c1: [{ id: 1, text: 'Ежедневные код-ревью по утрам', votes: 3, color: null, comments: [] }],
+  c2: [{ id: 2, text: 'Затяжные встречи без повестки', votes: 5, color: null, comments: [] }],
+  c3: [{ id: 3, text: 'Чёткие критерии готовности', votes: 4, color: null, comments: [] }],
 };

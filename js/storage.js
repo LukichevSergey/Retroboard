@@ -8,6 +8,25 @@ function lsSave() {
   }
 }
 
+function lsSaveUserVotes() {
+  try {
+    localStorage.setItem('rb_user_votes', JSON.stringify(Array.from(state.userVotes)));
+  } catch (e) {
+    console.warn('LS user votes save failed', e);
+  }
+}
+
+function lsLoadUserVotes() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('rb_user_votes') || 'null');
+    if (Array.isArray(saved)) {
+      state.userVotes = new Set(saved);
+    }
+  } catch (e) {
+    state.userVotes = new Set();
+  }
+}
+
 function lsLoad() {
   try {
     const saved = JSON.parse(localStorage.getItem('rb_v4') || 'null');

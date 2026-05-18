@@ -62,7 +62,7 @@ function doCopyBoard(name) {
   board.id = id;
   board.name = name;
   board.createdAt = Date.now();
-  Object.values(board.cards).forEach(arr => arr.forEach(card => { card.voted = false; }));
+  Object.values(board.cards).forEach(arr => arr.forEach(card => { if ('voted' in card) delete card.voted; }));
   state.boards[id] = board;
   fbSave(board);
   lsSave();
