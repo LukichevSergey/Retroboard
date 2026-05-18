@@ -31,7 +31,7 @@ function addCard(colId) {
   const text = input?.value.trim();
   if (!text) return;
   board._nextId = (board._nextId || 100) + 1;
-  board.cards[colId].push({ id: board._nextId, text, votes: 0, voted: false, color: null, comments: [] });
+  board.cards[colId].push({ id: board._nextId, text, votes: 0, color: null, comments: [] });
   fbSave(board);
   lsSave();
   renderBoard();
@@ -64,15 +64,20 @@ function vote(cardId) {
   if (!col) return;
   const card = board.cards[col].find(card => card.id === cardId);
   if (!card) return;
-  if (card.voted) {
-    card.votes -= 1;
-    card.voted = false;
+
+  const hasVoted = state.userVotes.has(cardId);
+  if (hasVoted) {
+    card.votes = Math.max(0, card.votes - 1);
+    state.userVotes.delete(cardId);
   } else {
-    card.votes += 1;
-    card.voted = true;
+    card.votes = (card.votes || 0) + 1;
+    state.userVotes.add(cardId);
   }
+  if ('voted' in card) delete card.voted;
+
   fbSave(board);
   lsSave();
+  lsSaveUserVotes();
   renderBoard();
 }
 

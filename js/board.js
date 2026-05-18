@@ -29,11 +29,12 @@ function cardHTML(card) {
   const commentCount = count ? `<span class="comment-count">${count}</span>` : '';
   const openClass = state.commentOpenState.has(card.id) ? ' open' : '';
   const voteLabel = card.votes > 0 ? `${card.votes}` : '';
+  const userVoted = state.userVotes.has(card.id);
 
   return `<div class="card" id="card-${card.id}" ${bgStyle} onmousedown="onCardDown(event, ${card.id})">
     <div class="card-text">${esc(card.text)}</div>
     <div class="card-footer">
-      <button class="vote-btn ${card.voted ? 'voted' : ''}" onclick="vote(${card.id})">
+      <button class="vote-btn ${userVoted ? 'voted' : ''}" onclick="vote(${card.id})">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
           <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>

@@ -18,6 +18,7 @@ async function handleBoardSnapshot(snapshot) {
 
 async function boot() {
   initFirebase();
+  lsLoadUserVotes();
   if (firebaseOk) {
     try {
       const snapshot = await boardsCol().get();

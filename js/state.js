@@ -14,6 +14,7 @@ const state = {
   timerRunning: false,
   timerInterval: null,
   globalTimerUnsub: null,
+  userVotes: new Set(),
 };
 
 function curBoard() {
