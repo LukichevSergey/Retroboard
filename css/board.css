@@ -59,6 +59,8 @@
 
 .drop-ind { height: 3px; border-radius: 2px; background: var(--accent); pointer-events: none; flex-shrink: 0; }
 
+.cards-list { display: flex; flex-direction: column; gap: 8px; }
+
 /* add card */
 .add-wrap { border: 1.5px dashed var(--border2); border-radius: var(--radius); overflow: hidden; transition: border-color .2s; }
 .add-wrap:focus-within { border-color: var(--accent); border-style: solid; }

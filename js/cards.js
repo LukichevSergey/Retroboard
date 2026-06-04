@@ -32,6 +32,7 @@ function addCard(colId) {
   if (!text) return;
   board._nextId = (board._nextId || 100) + 1;
   board.cards[colId].push({ id: board._nextId, text, votes: 0, color: null, comments: [] });
+  closeAdd(colId);
   fbSave(board);
   lsSave();
   renderBoard();
@@ -195,6 +196,8 @@ function onDragMove(event) {
   if (!targetCol) return;
   document.querySelector(`.column[data-col="${targetCol}"]`)?.classList.add('drag-over');
   const body = document.getElementById('cb-' + targetCol);
+  if (!body) return;
+  const cardsContainer = body.querySelector('.cards-list') || body;
   let insertBefore = null;
   for (const card of (board.cards[targetCol] || [])) {
     if (card.id === state.dnd.cardId) continue;
@@ -211,9 +214,9 @@ function onDragMove(event) {
   indicator.className = 'drop-ind';
   if (insertBefore !== null) {
     const reference = document.getElementById('card-' + insertBefore);
-    if (reference) body.insertBefore(indicator, reference);
+    if (reference) cardsContainer.insertBefore(indicator, reference);
   } else {
-    body.appendChild(indicator);
+    cardsContainer.appendChild(indicator);
   }
 }
 
@@ -245,6 +248,7 @@ function onDragUp() {
     }
   }
   state.dnd = { active: false, cardId: null, ghost: null, ox: 0, oy: 0, targetCol: null, insertBefore: null };
+  if (state._pendingBoardRender) renderBoard();
 }
 
 document.addEventListener('mousedown', event => {
