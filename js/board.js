@@ -60,7 +60,7 @@ function cardHTML(card) {
 
   if (isOwner) {
     footerBtns += `
-      <button class="btn" onclick="openCardEditModal(${card.id})" title="Редактировать">✎</button>
+      <button class="card-edit-btn" onclick="openCardEditModal(${card.id})" title="Редактировать">✎</button>
       <button class="card-del-btn" onclick="delCard(${card.id})" title="Удалить">` +
         `<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">` +
           `<polyline points="3 6 5 6 21 6"/>` +
