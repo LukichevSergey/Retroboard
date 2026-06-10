@@ -121,6 +121,67 @@ function ensureCardsContainer(colBody) {
   return cardsContainer;
 }
 
+function captureBoardInputState() {
+  const result = { activeElementId: null, selectionStart: null, selectionEnd: null, values: {}, openAddForms: [] };
+  const inner = document.getElementById('boardInner');
+  if (!inner) return result;
+
+  inner.querySelectorAll('input[id], textarea[id]').forEach(field => {
+    result.values[field.id] = field.value;
+  });
+
+  inner.querySelectorAll('.add-form.open').forEach(form => {
+    if (form.id && form.id.startsWith('af-')) {
+      result.openAddForms.push(form.id.slice(3));
+    }
+  });
+
+  const active = document.activeElement;
+  if (active && active.id && inner.contains(active) && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+    result.activeElementId = active.id;
+    if (typeof active.selectionStart === 'number') {
+      result.selectionStart = active.selectionStart;
+      result.selectionEnd = active.selectionEnd;
+    }
+  }
+
+  return result;
+}
+
+function restoreBoardInputState(saved) {
+  if (!saved) return;
+  const inner = document.getElementById('boardInner');
+  if (!inner) return;
+
+  Object.keys(saved.values).forEach(id => {
+    const field = document.getElementById(id);
+    if (field && (field.tagName === 'INPUT' || field.tagName === 'TEXTAREA')) {
+      if (field.value !== saved.values[id]) {
+        field.value = saved.values[id];
+      }
+    }
+  });
+
+  saved.openAddForms.forEach(colId => {
+    const form = document.getElementById('af-' + colId);
+    const trigger = document.getElementById('at-' + colId);
+    if (form && trigger) {
+      form.classList.add('open');
+      trigger.style.display = 'none';
+    }
+  });
+
+  if (saved.activeElementId) {
+    const activeField = document.getElementById(saved.activeElementId);
+    if (activeField && typeof activeField.focus === 'function') {
+      activeField.focus();
+      if (typeof saved.selectionStart === 'number') {
+        activeField.setSelectionRange(saved.selectionStart, saved.selectionEnd);
+      }
+    }
+  }
+}
+
 function applyCardStyles(cardEl, card) {
   const contrastText = card.color ? getContrastColor(card.color) : null;
   const btnBg = contrastText === '#fff' ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.7)';
@@ -286,6 +347,7 @@ function updateColumnElement(colEl, col, cards) {
 }
 
 function renderBoard() {
+  const inputState = captureBoardInputState();
   if (state.dnd && state.dnd.active) {
     state._pendingBoardRender = true;
     return;
@@ -341,6 +403,8 @@ function renderBoard() {
   } else {
     inner.appendChild(addColumnButton);
   }
+
+  restoreBoardInputState(inputState);
 }
 
 function referenceNodeIsInParent(node, parent) {
