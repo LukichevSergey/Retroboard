@@ -246,10 +246,11 @@ function updateCardElement(cardEl, card) {
 function reconcileColumnCards(cardsContainer, cards) {
   const desiredIds = new Set(cards.map(card => String(card.id)));
   const existingCards = Array.from(cardsContainer.children).filter(child => child.classList.contains('card'));
+  const localCardMap = new Map(existingCards.map(el => [el.id.replace(/^card-/, ''), el]));
 
   cards.forEach((card, index) => {
     const cardId = String(card.id);
-    let cardEl = document.getElementById('card-' + cardId);
+    let cardEl = cardsContainer.querySelector('#card-' + cardId) || localCardMap.get(cardId) || document.getElementById('card-' + cardId);
     if (cardEl && cardEl.parentElement !== cardsContainer) {
       cardsContainer.appendChild(cardEl);
     }
