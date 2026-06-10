@@ -32,7 +32,7 @@ function cardHTML(card) {
   const userVoted = state.userVotes.has(card.id);
 
   return `<div class="card" id="card-${card.id}" ${bgStyle} onmousedown="onCardDown(event, ${card.id})">
-    <div class="card-text">${esc(card.text)}</div>
+    <div class="card-text">${linkify(card.text)}</div>
     <div class="card-footer">
       <button class="vote-btn ${userVoted ? 'voted' : ''}" onclick="vote(${card.id})">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -69,7 +69,7 @@ function cardHTML(card) {
       <div class="comments-list">
         ${count ? comments.map(comment => `
           <div class="comment-item">
-            <div class="comment-text">${esc(comment.text)}</div>
+            <div class="comment-text">${linkify(comment.text)}</div>
           </div>
         `).join('') : '<div class="comment-empty">Нет комментариев</div>'}
       </div>
@@ -196,7 +196,7 @@ function renderCommentItems(comments) {
   return comments.length
     ? comments.map(comment => `
         <div class="comment-item">
-          <div class="comment-text">${esc(comment.text)}</div>
+          <div class="comment-text">${linkify(comment.text)}</div>
         </div>`).join('')
     : '<div class="comment-empty">Нет комментариев</div>';
 }
@@ -206,7 +206,7 @@ function updateCardElement(cardEl, card) {
 
   const cardText = cardEl.querySelector('.card-text');
   if (cardText && cardText.textContent !== card.text) {
-    cardText.textContent = card.text;
+    cardText.innerHTML = linkify(card.text);
   }
 
   const voteBtn = cardEl.querySelector('.vote-btn');
@@ -292,10 +292,11 @@ function createColumnElement(col, cards) {
   wrap.innerHTML = `
     <div class="col-head" style="${schemeHeadStyle(col.s)}">
       <div class="col-dot" style="${schemeDotStyle(col.s)}" title="Изменить цвет" onclick="openColSchemePopup(event,'${col.id}')"></div>
-      <input class="col-label-input" id="cli-${col.id}" value="${esc(col.label)}"
+      <textarea class="col-label-input" id="cli-${col.id}" rows="1"
         style="${schemeLabelStyle(col.s)}"
         onchange="renameCol('${col.id}',this.value)"
-        onblur="renameCol('${col.id}',this.value)" />
+        onblur="renameCol('${col.id}',this.value)"
+        oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';">${esc(col.label)}</textarea>
       <div class="col-badge" style="${schemeBadgeStyle(col.s)}">${cards.length}</div>
       <button class="col-del-btn" onclick="confirmDelCol('${col.id}')" title="Удалить колонку">
         <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -332,9 +333,12 @@ function updateColumnElement(colEl, col, cards) {
   const labelInput = colEl.querySelector('.col-label-input');
   if (labelInput) {
     if (document.activeElement !== labelInput) {
-      labelInput.value = esc(col.label);
+      labelInput.value = col.label;
     }
     labelInput.style.cssText = schemeLabelStyle(col.s);
+    // autosize
+    labelInput.style.height = 'auto';
+    labelInput.style.height = (labelInput.scrollHeight) + 'px';
   }
 
   const badge = colEl.querySelector('.col-badge');

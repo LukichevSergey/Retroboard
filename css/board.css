@@ -40,9 +40,10 @@
 .col-dot:hover { transform: scale(1.35); }
 
 .col-label-input {
-  flex: 1; min-width: 0; font-size: 11px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase;
+  flex: 1; min-width: 0; font-size: 13px; font-weight: 700; letter-spacing: .2px; text-transform: none;
   background: transparent; border: none; outline: none; font-family: 'DM Sans', sans-serif; cursor: text;
-  border-bottom: 1.5px solid transparent; transition: border-color .15s; padding: 1px 2px;
+  border-bottom: 1.5px solid transparent; transition: border-color .15s; padding: 1px 2px; resize: none; overflow: hidden;
+  line-height: 1.15; padding-top: 2px; padding-bottom: 2px;
 }
 .col-label-input:hover { border-bottom-color: rgba(0, 0, 0, 0.15); }
 .col-badge { font-size: 11px; font-weight: 600; flex-shrink: 0; padding: 1px 7px; border-radius: 20px; }
@@ -80,7 +81,7 @@
 .add-col-btn svg { width: 22px; height: 22px; }
 
 /* CARD */
-.card { border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 11px; display: flex; flex-direction: column; gap: 7px; cursor: grab; user-select: none; transition: border-color .15s, box-shadow .15s; background: var(--card-bg, var(--surface2)); color: var(--card-text, var(--text)); }
+.card { border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 11px; display: flex; flex-direction: column; gap: 7px; cursor: grab; user-select: text; transition: border-color .15s, box-shadow .15s; background: var(--card-bg, var(--surface2)); color: var(--card-text, var(--text)); }
 .card:hover { border-color: var(--border2); box-shadow: var(--shadow); }
 .card.is-dragging { opacity: .3; }
 
@@ -108,7 +109,11 @@
 
 .comments-list { display: flex; flex-direction: column; gap: 8px; }
 .comment-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px; border-radius: var(--radius); background: var(--surface2); border: 1px solid var(--border2); }
-.comment-item .comment-text { flex: 1; font-size: 13px; line-height: 1.5; color: var(--text); white-space: pre-wrap; }
+.comment-item .comment-text { flex: 1; font-size: 13px; line-height: 1.5; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+
+.card-text, .comment-text { overflow-wrap: anywhere; }
+
+.card-text a, .comment-text a { color: var(--accent); text-decoration: underline; }
 
 .comment-form textarea { width: 100%; min-height: 72px; padding: 10px 11px; border-radius: 10px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); outline: none; font-family: 'DM Sans', sans-serif; font-size: 13px; resize: vertical; }
 .comment-form textarea:focus { border-color: var(--accent); }

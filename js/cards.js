@@ -148,33 +148,50 @@ function saveComment(cardId) {
 }
 
 function onCardDown(event, cardId) {
-  if (event.target.closest('button, textarea, input, select, .comment-item, .comment-form, .comment-btn')) return;
-  event.preventDefault();
+  if (event.target.closest('button, a, textarea, input, select, .comment-item, .comment-form, .comment-btn, .card-text')) return;
   const cardElement = document.getElementById('card-' + cardId);
   if (!cardElement) return;
   const rect = cardElement.getBoundingClientRect();
+  // Arm drag but don't start until user moves pointer beyond threshold — allows text selection
   state.dnd = {
-    active: true,
+    armed: true,
+    active: false,
     cardId,
     ghost: null,
     ox: event.clientX - rect.left,
     oy: event.clientY - rect.top,
+    startX: event.clientX,
+    startY: event.clientY,
     targetCol: null,
     insertBefore: null,
   };
-  const ghost = document.createElement('div');
-  ghost.className = 'card-ghost';
-  ghost.style.cssText = `width:${rect.width}px;left:${event.clientX - state.dnd.ox}px;top:${event.clientY - state.dnd.oy}px`;
-  ghost.textContent = cardElement.querySelector('.card-text')?.textContent || '';
-  document.body.appendChild(ghost);
-  state.dnd.ghost = ghost;
-  cardElement.classList.add('is-dragging');
   document.addEventListener('mousemove', onDragMove, { passive: true });
   document.addEventListener('mouseup', onDragUp);
 }
 
 function onDragMove(event) {
-  if (!state.dnd.active || !state.dnd.ghost) return;
+  if (!state.dnd || !state.dnd.armed) return;
+
+  // If not yet active, check movement threshold to begin dragging (so text selection still works)
+  if (!state.dnd.active) {
+    const dx = event.clientX - state.dnd.startX;
+    const dy = event.clientY - state.dnd.startY;
+    if (Math.sqrt(dx * dx + dy * dy) < 6) return; // threshold in pixels
+
+    // begin drag
+    state.dnd.active = true;
+    const cardElement = document.getElementById('card-' + state.dnd.cardId);
+    if (!cardElement) return;
+    const rect = cardElement.getBoundingClientRect();
+    const ghost = document.createElement('div');
+    ghost.className = 'card-ghost';
+    ghost.style.cssText = `width:${rect.width}px;left:${event.clientX - state.dnd.ox}px;top:${event.clientY - state.dnd.oy}px`;
+    ghost.textContent = cardElement.querySelector('.card-text')?.textContent || '';
+    document.body.appendChild(ghost);
+    state.dnd.ghost = ghost;
+    cardElement.classList.add('is-dragging');
+  }
+
   state.dnd.ghost.style.left = (event.clientX - state.dnd.ox) + 'px';
   state.dnd.ghost.style.top = (event.clientY - state.dnd.oy) + 'px';
   document.querySelectorAll('.drop-ind').forEach(el => el.remove());
@@ -226,13 +243,14 @@ function onDragUp() {
   document.querySelectorAll('.drop-ind').forEach(el => el.remove());
   const board = curBoard();
   if (board) board.cols.forEach(col => document.querySelector(`.column[data-col="${col.id}"]`)?.classList.remove('drag-over'));
-  if (state.dnd.ghost) {
+  if (state.dnd && state.dnd.ghost) {
     state.dnd.ghost.remove();
     state.dnd.ghost = null;
   }
-  const cardElement = document.getElementById('card-' + state.dnd.cardId);
+  const cardElement = state.dnd ? document.getElementById('card-' + state.dnd.cardId) : null;
   cardElement?.classList.remove('is-dragging');
-  if (state.dnd.active && state.dnd.targetCol && board) {
+
+  if (state.dnd && state.dnd.active && state.dnd.targetCol && board) {
     const fromCol = colOfCard(state.dnd.cardId);
     if (fromCol) {
       const cardObject = board.cards[fromCol].find(card => card.id === state.dnd.cardId);
@@ -247,7 +265,7 @@ function onDragUp() {
       if (fromCol !== state.dnd.targetCol) showToast('Карточка перемещена');
     }
   }
-  state.dnd = { active: false, cardId: null, ghost: null, ox: 0, oy: 0, targetCol: null, insertBefore: null };
+  state.dnd = { active: false, armed: false, cardId: null, ghost: null, ox: 0, oy: 0, targetCol: null, insertBefore: null };
   if (state._pendingBoardRender) renderBoard();
 }
 
