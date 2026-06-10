@@ -34,13 +34,11 @@ const CARD_COLORS = [
 ];
 
 const DEFAULT_COLS = [
-  { id: 'c1', label: 'Start', s: 0 },
-  { id: 'c2', label: 'Stop', s: 1 },
-  { id: 'c3', label: 'Continue', s: 2 },
+  { id: 'c1', label: 'Прошлая ретроспектива', s: 0 },
+  { id: 'c2', label: 'Мне понравилось... 🥰', s: 1 },
+  { id: 'c3', label: 'Мы могли бы улучшить?', s: 2 },
+  { id: 'c4', label: 'Теперь я знаю, что...🤓', s: 3 },
+  { id: 'c5', label: 'Действия 🏃‍♂️', s: 4 },
 ];
 
-const DEFAULT_CARDS = {
-  c1: [{ id: 1, text: 'Ежедневные код-ревью по утрам', votes: 3, color: null, comments: [] }],
-  c2: [{ id: 2, text: 'Затяжные встречи без повестки', votes: 5, color: null, comments: [] }],
-  c3: [{ id: 3, text: 'Чёткие критерии готовности', votes: 4, color: null, comments: [] }],
-};
+const DEFAULT_CARDS = { };
