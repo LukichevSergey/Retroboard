@@ -49,6 +49,10 @@
 .bug-modal textarea { width: 100%; min-height: 220px; max-height: 320px; resize: none; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--border2); background: var(--surface2); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.6; outline: none; }
 .bug-modal textarea:focus { border-color: var(--accent); }
 
+/* Edit modal (comments/cards) textarea: no resize, transparent background */
+#editCommentOverlay .modal textarea { width: 100%; min-height: 120px; resize: none; padding: 10px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.5; outline: none; }
+#editCommentOverlay .modal textarea:focus { border-color: transparent; }
+
 /* scheme grid */
 .scheme-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .scheme-tile { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all .15s; }

@@ -130,4 +130,20 @@
 .card-del-btn:hover { background: #FCEBEB; color: #E24B4A; }
 .card-del-btn svg { width: 12px; height: 12px; }
 
+/* edit button looks like delete but subtle */
+.card-edit-btn { width: 22px; height: 22px; border-radius: 5px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--hint); opacity: 0; transition: all .15s; }
+.card:hover .card-edit-btn { opacity: 1; }
+.card-edit-btn:hover { background: var(--surface2); color: var(--text); }
+.card-edit-btn svg { width: 12px; height: 12px; }
+
+/* small action buttons for comments */
+.comment-item .btn { padding: 4px 6px; font-size: 12px; height: 28px; line-height: 1; }
+.comment-item .btn svg { width: 12px; height: 12px; }
+
+/* inline comment edit field should blend with background */
+.comment-item textarea { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border2); background: var(--surface); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; }
+.comment-item textarea:focus { border-color: var(--accent); }
+
+.comment-item .comment-text { flex: 1; }
+
 .empty-hint { text-align: center; color: var(--hint); font-size: 12px; padding: 16px 0; font-style: italic; }

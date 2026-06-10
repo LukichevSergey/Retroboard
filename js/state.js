@@ -32,3 +32,19 @@ function nextGlobalCardId() {
   state._globalCardId += 1;
   return state._globalCardId;
 }
+
+function getClientId() {
+  try {
+    const key = 'rb.clientId';
+    let id = localStorage.getItem(key);
+    if (!id) {
+      id = uid();
+      localStorage.setItem(key, id);
+    }
+    return id;
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+window.getClientId = getClientId;
