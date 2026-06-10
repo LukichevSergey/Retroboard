@@ -1,10 +1,34 @@
 
+function escapeHtml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function fillNewBoardCopySourceOptions(selectedId = '') {
+  const select = document.getElementById('newBoardCopySource');
+  if (!select) return;
+  const options = ['<option value="">Не заполнять</option>'];
+  Object.values(state.boards)
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+    .forEach(board => {
+      options.push(`<option value="${board.id}">${escapeHtml(board.name)}</option>`);
+    });
+  select.innerHTML = options.join('');
+  select.value = selectedId || '';
+}
+
 function openNewBoardModal() {
   state._newBoardMode = 'create';
   document.getElementById('newBoardModalTitle').textContent = 'Новая доска';
   document.getElementById('newBoardModalSub').textContent = 'Введите название, например «Sprint #43».';
   document.getElementById('newBoardConfirmBtn').textContent = 'Создать';
   document.getElementById('newBoardName').value = '';
+  const sourceRow = document.getElementById('newBoardCopySourceRow');
+  if (sourceRow) sourceRow.style.display = '';
+  fillNewBoardCopySourceOptions();
   document.getElementById('newBoardOverlay').classList.add('open');
   setTimeout(() => document.getElementById('newBoardName').focus(), 60);
 }
@@ -17,6 +41,8 @@ function copyBoard() {
   document.getElementById('newBoardModalSub').textContent = 'Введите название для копии. Все колонки и карточки будут скопированы.';
   document.getElementById('newBoardConfirmBtn').textContent = 'Копировать';
   document.getElementById('newBoardName').value = board.name + ' (копия)';
+  const sourceRow = document.getElementById('newBoardCopySourceRow');
+  if (sourceRow) sourceRow.style.display = 'none';
   document.getElementById('newBoardOverlay').classList.add('open');
   setTimeout(() => {
     const input = document.getElementById('newBoardName');
@@ -30,7 +56,8 @@ function confirmNewBoard() {
   if (state._newBoardMode === 'copy') {
     doCopyBoard(name);
   } else {
-    doCreateBoard(name);
+    const sourceBoardId = document.getElementById('newBoardCopySource')?.value || null;
+    doCreateBoard(name, sourceBoardId);
   }
   closeOverlay('newBoardOverlay');
 }
@@ -57,7 +84,7 @@ function remapBoardIds(board) {
   board._nextId = Math.max(board._nextId || 0, maxCardId);
 }
 
-function doCreateBoard(name) {
+function doCreateBoard(name, sourceBoardId = null) {
   const id = 'b_' + uid();
   const board = {
     id,
@@ -69,6 +96,38 @@ function doCreateBoard(name) {
     _nextColId: 5,
   };
   remapBoardIds(board);
+
+  if (sourceBoardId) {
+    const source = state.boards[sourceBoardId];
+    if (source && Array.isArray(source.cols) && source.cols.length) {
+      const lastCol = source.cols[source.cols.length - 1];
+      const lastCards = source.cards?.[lastCol.id] || [];
+      const targetColId = board.cols?.[0]?.id;
+      if (targetColId && lastCards.length) {
+        board.cards[targetColId] = lastCards.map(sourceCard => {
+          const newId = nextGlobalCardId();
+          return {
+            id: newId,
+            text: sourceCard.text,
+            votes: 0,
+            color: sourceCard.color || null,
+            comments: (sourceCard.comments || []).map(comment => ({
+              id: 'cm_' + uid(),
+              text: comment.text,
+              createdAt: comment.createdAt || Date.now(),
+              modifiedAt: comment.modifiedAt || comment.createdAt || Date.now(),
+              ownerId: comment.ownerId || getClientId(),
+            })),
+            ownerId: getClientId(),
+            createdAt: Date.now(),
+            modifiedAt: Date.now(),
+          };
+        });
+        board._nextId = Math.max(board._nextId || 0, ...board.cards[targetColId].map(card => card.id));
+      }
+    }
+  }
+
   state.boards[id] = board;
   fbSave(board);
   lsSave();

@@ -120,6 +120,10 @@
         <label>Название</label>
         <input type="text" id="newBoardName" placeholder="Sprint #43" />
       </div>
+      <div class="mfield" id="newBoardCopySourceRow">
+        <label>Предзаполнить первую колонку на основании последней колонки из</label>
+        <select id="newBoardCopySource"></select>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-ghost" onclick="closeOverlay('newBoardOverlay')">Отмена</button>
         <button class="btn btn-primary" id="newBoardConfirmBtn" onclick="confirmNewBoard()">Создать</button>
