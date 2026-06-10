@@ -35,6 +35,28 @@ function confirmNewBoard() {
   closeOverlay('newBoardOverlay');
 }
 
+function remapBoardIds(board) {
+  const colIdMap = {};
+  board.cols = board.cols.map(col => {
+    const newId = 'c_' + uid();
+    colIdMap[col.id] = newId;
+    return { ...col, id: newId };
+  });
+
+  const newCards = {};
+  let maxCardId = 0;
+  Object.entries(board.cards).forEach(([oldColId, cards]) => {
+    const newColId = colIdMap[oldColId] || oldColId;
+    newCards[newColId] = cards.map(card => {
+      const newId = nextGlobalCardId();
+      maxCardId = Math.max(maxCardId, newId);
+      return { ...card, id: newId };
+    });
+  });
+  board.cards = newCards;
+  board._nextId = Math.max(board._nextId || 0, maxCardId);
+}
+
 function doCreateBoard(name) {
   const id = 'b_' + uid();
   const board = {
@@ -46,6 +68,7 @@ function doCreateBoard(name) {
     _nextId: 10,
     _nextColId: 5,
   };
+  remapBoardIds(board);
   state.boards[id] = board;
   fbSave(board);
   lsSave();
@@ -62,6 +85,7 @@ function doCopyBoard(name) {
   board.id = id;
   board.name = name;
   board.createdAt = Date.now();
+  remapBoardIds(board);
   Object.values(board.cards).forEach(arr => arr.forEach(card => { if ('voted' in card) delete card.voted; }));
   state.boards[id] = board;
   fbSave(board);

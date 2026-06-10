@@ -20,6 +20,8 @@ function schemeBadgeStyle(s) {
   return `background:${sc.tag};color:${sc.tt}`;
 }
 
+let lastRenderedBoardId = null;
+
 function cardHTML(card) {
   const contrastText = card.color ? getContrastColor(card.color) : null;
   const btnBg = contrastText === '#fff' ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.7)';
@@ -244,10 +246,11 @@ function updateCardElement(cardEl, card) {
 function reconcileColumnCards(cardsContainer, cards) {
   const desiredIds = new Set(cards.map(card => String(card.id)));
   const existingCards = Array.from(cardsContainer.children).filter(child => child.classList.contains('card'));
+  const localCardMap = new Map(existingCards.map(el => [el.id.replace(/^card-/, ''), el]));
 
   cards.forEach((card, index) => {
     const cardId = String(card.id);
-    let cardEl = document.getElementById('card-' + cardId);
+    let cardEl = cardsContainer.querySelector('#card-' + cardId) || localCardMap.get(cardId) || document.getElementById('card-' + cardId);
     if (cardEl && cardEl.parentElement !== cardsContainer) {
       cardsContainer.appendChild(cardEl);
     }
@@ -350,7 +353,10 @@ function updateColumnElement(colEl, col, cards) {
   }
 
   const badge = colEl.querySelector('.col-badge');
-  if (badge) badge.textContent = cards.length;
+  if (badge) {
+    badge.style.cssText = schemeBadgeStyle(col.s);
+    badge.textContent = cards.length;
+  }
 
   const colBody = colEl.querySelector('.col-body');
   if (!colBody) return;
@@ -358,8 +364,9 @@ function updateColumnElement(colEl, col, cards) {
   reconcileColumnCards(cardsContainer, cards);
 }
 
-function renderBoard() {
-  const inputState = captureBoardInputState();
+function renderBoard({ preserveInputState = true } = {}) {
+  const shouldRestoreInput = preserveInputState && state.activeBoardId === lastRenderedBoardId;
+  const inputState = shouldRestoreInput ? captureBoardInputState() : null;
   if (state.dnd && state.dnd.active) {
     state._pendingBoardRender = true;
     return;
@@ -418,7 +425,11 @@ function renderBoard() {
     inner.appendChild(addColumnButton);
   }
 
-  restoreBoardInputState(inputState);
+  if (shouldRestoreInput) {
+    restoreBoardInputState(inputState);
+  }
+
+  lastRenderedBoardId = state.activeBoardId;
 }
 
 function referenceNodeIsInParent(node, parent) {

@@ -30,8 +30,9 @@ function addCard(colId) {
   const input = document.getElementById('atx-' + colId);
   const text = input?.value.trim();
   if (!text) return;
-  board._nextId = (board._nextId || 100) + 1;
-  board.cards[colId].push({ id: board._nextId, text, votes: 0, color: null, comments: [] });
+  const newId = nextGlobalCardId();
+  board._nextId = Math.max(board._nextId || 0, newId);
+  board.cards[colId].push({ id: newId, text, votes: 0, color: null, comments: [] });
   closeAdd(colId);
   fbSave(board);
   lsSave();

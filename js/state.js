@@ -16,6 +16,7 @@ const state = {
   globalTimerUnsub: null,
   userVotes: new Set(),
   _pendingBoardRender: false,
+  _globalCardId: Date.now(),
 };
 
 function curBoard() {
@@ -24,4 +25,10 @@ function curBoard() {
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function nextGlobalCardId() {
+  if (!state._globalCardId) state._globalCardId = Date.now();
+  state._globalCardId += 1;
+  return state._globalCardId;
 }
