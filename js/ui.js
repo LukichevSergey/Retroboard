@@ -7,6 +7,17 @@ function esc(value) {
     .replace(/"/g, '&quot;');
 }
 
+function linkify(value) {
+  const text = String(value);
+  const escaped = esc(text);
+  const urlRegex = /((https?:\/\/|www\.)[\w\-\.@:%_\+~#=\/\?&;,]+[\w\-\/%#=\?&;])/gi;
+  return escaped.replace(urlRegex, match => {
+    let href = match;
+    if (!/^https?:\/\//i.test(href)) href = 'http://' + href;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer">${match}</a>`;
+  });
+}
+
 function closeOverlay(id) {
   document.getElementById(id)?.classList.remove('open');
 }

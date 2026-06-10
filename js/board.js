@@ -32,7 +32,7 @@ function cardHTML(card) {
   const userVoted = state.userVotes.has(card.id);
 
   return `<div class="card" id="card-${card.id}" ${bgStyle} onmousedown="onCardDown(event, ${card.id})">
-    <div class="card-text">${esc(card.text)}</div>
+    <div class="card-text">${linkify(card.text)}</div>
     <div class="card-footer">
       <button class="vote-btn ${userVoted ? 'voted' : ''}" onclick="vote(${card.id})">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -69,7 +69,7 @@ function cardHTML(card) {
       <div class="comments-list">
         ${count ? comments.map(comment => `
           <div class="comment-item">
-            <div class="comment-text">${esc(comment.text)}</div>
+            <div class="comment-text">${linkify(comment.text)}</div>
           </div>
         `).join('') : '<div class="comment-empty">Нет комментариев</div>'}
       </div>
@@ -121,6 +121,67 @@ function ensureCardsContainer(colBody) {
   return cardsContainer;
 }
 
+function captureBoardInputState() {
+  const result = { activeElementId: null, selectionStart: null, selectionEnd: null, values: {}, openAddForms: [] };
+  const inner = document.getElementById('boardInner');
+  if (!inner) return result;
+
+  inner.querySelectorAll('input[id], textarea[id]').forEach(field => {
+    result.values[field.id] = field.value;
+  });
+
+  inner.querySelectorAll('.add-form.open').forEach(form => {
+    if (form.id && form.id.startsWith('af-')) {
+      result.openAddForms.push(form.id.slice(3));
+    }
+  });
+
+  const active = document.activeElement;
+  if (active && active.id && inner.contains(active) && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+    result.activeElementId = active.id;
+    if (typeof active.selectionStart === 'number') {
+      result.selectionStart = active.selectionStart;
+      result.selectionEnd = active.selectionEnd;
+    }
+  }
+
+  return result;
+}
+
+function restoreBoardInputState(saved) {
+  if (!saved) return;
+  const inner = document.getElementById('boardInner');
+  if (!inner) return;
+
+  Object.keys(saved.values).forEach(id => {
+    const field = document.getElementById(id);
+    if (field && (field.tagName === 'INPUT' || field.tagName === 'TEXTAREA')) {
+      if (field.value !== saved.values[id]) {
+        field.value = saved.values[id];
+      }
+    }
+  });
+
+  saved.openAddForms.forEach(colId => {
+    const form = document.getElementById('af-' + colId);
+    const trigger = document.getElementById('at-' + colId);
+    if (form && trigger) {
+      form.classList.add('open');
+      trigger.style.display = 'none';
+    }
+  });
+
+  if (saved.activeElementId) {
+    const activeField = document.getElementById(saved.activeElementId);
+    if (activeField && typeof activeField.focus === 'function') {
+      activeField.focus();
+      if (typeof saved.selectionStart === 'number') {
+        activeField.setSelectionRange(saved.selectionStart, saved.selectionEnd);
+      }
+    }
+  }
+}
+
 function applyCardStyles(cardEl, card) {
   const contrastText = card.color ? getContrastColor(card.color) : null;
   const btnBg = contrastText === '#fff' ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.7)';
@@ -135,7 +196,7 @@ function renderCommentItems(comments) {
   return comments.length
     ? comments.map(comment => `
         <div class="comment-item">
-          <div class="comment-text">${esc(comment.text)}</div>
+          <div class="comment-text">${linkify(comment.text)}</div>
         </div>`).join('')
     : '<div class="comment-empty">Нет комментариев</div>';
 }
@@ -145,7 +206,7 @@ function updateCardElement(cardEl, card) {
 
   const cardText = cardEl.querySelector('.card-text');
   if (cardText && cardText.textContent !== card.text) {
-    cardText.textContent = card.text;
+    cardText.innerHTML = linkify(card.text);
   }
 
   const voteBtn = cardEl.querySelector('.vote-btn');
@@ -231,10 +292,11 @@ function createColumnElement(col, cards) {
   wrap.innerHTML = `
     <div class="col-head" style="${schemeHeadStyle(col.s)}">
       <div class="col-dot" style="${schemeDotStyle(col.s)}" title="Изменить цвет" onclick="openColSchemePopup(event,'${col.id}')"></div>
-      <input class="col-label-input" id="cli-${col.id}" value="${esc(col.label)}"
+      <textarea class="col-label-input" id="cli-${col.id}" rows="1"
         style="${schemeLabelStyle(col.s)}"
         onchange="renameCol('${col.id}',this.value)"
-        onblur="renameCol('${col.id}',this.value)" />
+        onblur="renameCol('${col.id}',this.value)"
+        oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';">${esc(col.label)}</textarea>
       <div class="col-badge" style="${schemeBadgeStyle(col.s)}">${cards.length}</div>
       <button class="col-del-btn" onclick="confirmDelCol('${col.id}')" title="Удалить колонку">
         <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -271,9 +333,12 @@ function updateColumnElement(colEl, col, cards) {
   const labelInput = colEl.querySelector('.col-label-input');
   if (labelInput) {
     if (document.activeElement !== labelInput) {
-      labelInput.value = esc(col.label);
+      labelInput.value = col.label;
     }
     labelInput.style.cssText = schemeLabelStyle(col.s);
+    // autosize
+    labelInput.style.height = 'auto';
+    labelInput.style.height = (labelInput.scrollHeight) + 'px';
   }
 
   const badge = colEl.querySelector('.col-badge');
@@ -286,6 +351,7 @@ function updateColumnElement(colEl, col, cards) {
 }
 
 function renderBoard() {
+  const inputState = captureBoardInputState();
   if (state.dnd && state.dnd.active) {
     state._pendingBoardRender = true;
     return;
@@ -341,6 +407,8 @@ function renderBoard() {
   } else {
     inner.appendChild(addColumnButton);
   }
+
+  restoreBoardInputState(inputState);
 }
 
 function referenceNodeIsInParent(node, parent) {
