@@ -32,7 +32,7 @@ function addCard(colId) {
   if (!text) return;
   const newId = nextGlobalCardId();
   board._nextId = Math.max(board._nextId || 0, newId);
-  board.cards[colId].push({ id: newId, text, votes: 0, color: null, comments: [] });
+  board.cards[colId].push({ id: newId, text, votes: 0, color: null, comments: [], ownerId: getClientId(), createdAt: Date.now(), modifiedAt: Date.now() });
   closeAdd(colId);
   fbSave(board);
   lsSave();
@@ -47,11 +47,19 @@ function delCard(cardId) {
   if (!col) return;
   const card = board.cards[col].find(c => c.id === cardId);
   if (!card) return;
-  
+  // Only owner can delete (or disallow if owner missing)
+  const clientId = getClientId();
+  if (!card.ownerId) {
+    alert('Эта карточка не имеет владельца и не может быть удалена.');
+    return;
+  }
+  if (card.ownerId !== clientId) {
+    alert('Вы не можете удалить чужую карточку.');
+    return;
+  }
   // Ask for confirmation before deleting
   const confirmed = window.confirm('Вы уверены, что хотите удалить карточку "' + card.text.substring(0, 30) + (card.text.length > 30 ? '...' : '') + '"?\n\nЭто действие нельзя отменить.');
   if (!confirmed) return;
-  
   board.cards[col] = board.cards[col].filter(card => card.id !== cardId);
   fbSave(board);
   lsSave();
@@ -140,13 +148,136 @@ function saveComment(cardId) {
   const text = input.value.trim();
   if (!text) return;
   card.comments = card.comments || [];
-  card.comments.push({ id: 'cm_' + uid(), text, createdAt: Date.now() });
+  card.comments.push({ id: 'cm_' + uid(), text, createdAt: Date.now(), ownerId: getClientId(), modifiedAt: Date.now() });
   state.commentOpenState.add(cardId);
   input.value = '';
   fbSave(board);
   lsSave();
   renderBoard();
 }
+
+function saveCardEdit(cardId) {
+  const board = curBoard();
+  if (!board) return;
+  const col = colOfCard(cardId);
+  if (!col) return;
+  const card = board.cards[col].find(c => c.id === cardId);
+  if (!card) return;
+  if (!card.ownerId || card.ownerId !== getClientId()) {
+    alert('Вы не можете редактировать эту карточку.');
+    state._editingCardId = null;
+    renderBoard();
+    return;
+  }
+  // Prefer modal input if present (reuse comment edit modal)
+  const input = document.getElementById('card-edit-input-' + cardId) || document.getElementById('modal-comment-edit-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  card.text = text;
+  card.modifiedAt = Date.now();
+  state._editingCardId = null;
+  fbSave(board);
+  lsSave();
+  renderBoard();
+  showToast('Карточка обновлена');
+}
+
+function cancelCardEdit(cardId) {
+  // noop: editing moved to modal-only flow
+}
+
+// Comment edit/delete
+function startEditComment(cardId, commentId) {
+  state._editingComment = { cardId, commentId };
+  renderBoard();
+}
+
+function saveCommentEdit(cardId, commentId) {
+  const board = curBoard();
+  if (!board) return;
+  const col = colOfCard(cardId);
+  if (!col) return;
+  const card = board.cards[col].find(c => c.id === cardId);
+  if (!card) return;
+  const comment = (card.comments || []).find(c => c.id === commentId);
+  if (!comment) return;
+  if (!comment.ownerId || comment.ownerId !== getClientId()) {
+    alert('Вы не можете редактировать этот комментарий.');
+    state._editingComment = null;
+    renderBoard();
+    return;
+  }
+  const input = document.getElementById('comment-edit-input-' + commentId) || document.getElementById('modal-comment-edit-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  comment.text = text;
+  comment.modifiedAt = Date.now();
+  state._editingComment = null;
+  fbSave(board);
+  lsSave();
+  renderBoard();
+  showToast('Комментарий обновлён');
+}
+
+function cancelCommentEdit() {
+  state._editingComment = null;
+  renderBoard();
+}
+
+function delComment(cardId, commentId) {
+  const board = curBoard();
+  if (!board) return;
+  const col = colOfCard(cardId);
+  if (!col) return;
+  const card = board.cards[col].find(c => c.id === cardId);
+  if (!card) return;
+  const comment = (card.comments || []).find(c => c.id === commentId);
+  if (!comment) return;
+  if (!comment.ownerId) { alert('Этот комментарий не имеет владельца и не может быть удалён.'); return; }
+  if (comment.ownerId !== getClientId()) { alert('Вы не можете удалить чужой комментарий.'); return; }
+  const confirmed = window.confirm('Удалить комментарий?');
+  if (!confirmed) return;
+  card.comments = (card.comments || []).filter(c => c.id !== commentId);
+  fbSave(board);
+  lsSave();
+  renderBoard();
+}
+
+window.saveCardEdit = saveCardEdit;
+window.cancelCardEdit = cancelCardEdit;
+window.startEditComment = startEditComment;
+window.saveCommentEdit = saveCommentEdit;
+window.cancelCommentEdit = cancelCommentEdit;
+window.delComment = delComment;
+window.openCardEditModal = function(cardId) {
+  const board = curBoard(); if (!board) return;
+  const col = colOfCard(cardId); if (!col) return;
+  const card = board.cards[col].find(c => c.id === cardId); if (!card) return;
+  if (!card.ownerId || card.ownerId !== getClientId()) { alert('Вы не можете редактировать эту карточку.'); return; }
+  // Reuse comment edit modal for cards
+  document.getElementById('editCommentModalTitle').textContent = 'Редактировать карточку';
+  const ta = document.getElementById('modal-comment-edit-input');
+  ta.value = card.text || '';
+  document.getElementById('modalCommentSaveBtn').onclick = function() { saveCardEdit(cardId); closeOverlay('editCommentOverlay'); };
+  document.getElementById('editCommentOverlay').classList.add('open');
+  setTimeout(() => ta.focus(), 50);
+};
+
+window.openCommentEditModal = function(cardId, commentId) {
+  const board = curBoard(); if (!board) return;
+  const col = colOfCard(cardId); if (!col) return;
+  const card = board.cards[col].find(c => c.id === cardId); if (!card) return;
+  const comment = (card.comments || []).find(c => c.id === commentId); if (!comment) return;
+  if (!comment.ownerId || comment.ownerId !== getClientId()) { alert('Вы не можете редактировать этот комментарий.'); return; }
+  document.getElementById('editCommentModalTitle').textContent = 'Редактировать комментарий';
+  const ta = document.getElementById('modal-comment-edit-input');
+  ta.value = comment.text || '';
+  document.getElementById('modalCommentSaveBtn').onclick = function() { saveCommentEdit(cardId, commentId); closeOverlay('editCommentOverlay'); };
+  document.getElementById('editCommentOverlay').classList.add('open');
+  setTimeout(() => ta.focus(), 50);
+};
 
 function onCardDown(event, cardId) {
   if (event.target.closest('button, a, textarea, input, select, .comment-item, .comment-form, .comment-btn, .card-text')) return;
