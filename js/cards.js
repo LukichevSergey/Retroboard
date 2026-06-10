@@ -435,3 +435,27 @@ window.applyCardColor = applyCardColor;
 window.toggleComments = toggleComments;
 window.saveComment = saveComment;
 window.onCardDown = onCardDown;
+
+function cancelDragIfActive() {
+  if (state.dnd && (state.dnd.armed || state.dnd.active)) {
+    try {
+      onDragUp();
+    } catch (e) {
+      // Fallback: ensure dnd state cleared
+      state.dnd = { active: false, armed: false, cardId: null, ghost: null, ox: 0, oy: 0, targetCol: null, insertBefore: null };
+    }
+  }
+}
+
+// If the user opens context menu, pointer is cancelled, or page visibility/focus changes
+// make sure any in-progress drag is cancelled to avoid "зависшие" карточки.
+document.addEventListener('contextmenu', event => {
+  if (state.dnd && (state.dnd.armed || state.dnd.active)) {
+    cancelDragIfActive();
+    // do not preventDefault: allow normal context menu behavior
+  }
+});
+
+document.addEventListener('pointercancel', () => cancelDragIfActive());
+document.addEventListener('visibilitychange', () => { if (document.hidden) cancelDragIfActive(); });
+window.addEventListener('blur', () => cancelDragIfActive());
