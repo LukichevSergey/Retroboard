@@ -285,6 +285,12 @@ function reconcileColumnCards(cardsContainer, cards) {
   }
 }
 
+function autosizeColumnLabel(labelInput) {
+  if (!labelInput) return;
+  labelInput.style.height = 'auto';
+  labelInput.style.height = (labelInput.scrollHeight) + 'px';
+}
+
 function createColumnElement(col, cards) {
   const wrap = document.createElement('div');
   wrap.className = 'column';
@@ -320,6 +326,8 @@ function createColumnElement(col, cards) {
         ${cards.length === 0 ? '<div class="empty-hint">Перетащите сюда карточку или добавьте новую</div>' : cards.map(cardHTML).join('')}
       </div>
     </div>`;
+  const labelInput = wrap.querySelector('.col-label-input');
+  if (labelInput) autosizeColumnLabel(labelInput);
   return wrap;
 }
 
@@ -394,6 +402,8 @@ function renderBoard() {
     if (colEl !== referenceNode.previousElementSibling) {
       inner.insertBefore(colEl, referenceNode);
     }
+    const labelInput = colEl.querySelector('.col-label-input');
+    if (labelInput) autosizeColumnLabel(labelInput);
   });
 
   existingCols.forEach(colEl => {
