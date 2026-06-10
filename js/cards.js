@@ -191,6 +191,14 @@ function onDragMove(event) {
     document.body.appendChild(ghost);
     state.dnd.ghost = ghost;
     cardElement.classList.add('is-dragging');
+    // disable text selection while dragging and clear any existing selection
+    try {
+      state._prevUserSelect = document.body.style.userSelect;
+      document.body.style.userSelect = 'none';
+      if (window.getSelection && window.getSelection().removeAllRanges) window.getSelection().removeAllRanges();
+    } catch (e) {
+      // ignore
+    }
   }
 
   state.dnd.ghost.style.left = (event.clientX - state.dnd.ox) + 'px';
@@ -267,6 +275,15 @@ function onDragUp() {
     }
   }
   state.dnd = { active: false, armed: false, cardId: null, ghost: null, ox: 0, oy: 0, targetCol: null, insertBefore: null };
+  // restore selection behavior
+  try {
+    if (state._prevUserSelect !== undefined) {
+      document.body.style.userSelect = state._prevUserSelect || '';
+      delete state._prevUserSelect;
+    }
+  } catch (e) {
+    // ignore
+  }
   if (state._pendingBoardRender) renderBoard();
 }
 
