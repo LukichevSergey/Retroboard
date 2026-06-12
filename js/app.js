@@ -24,6 +24,99 @@ async function handleBoardSnapshot(snapshot) {
 }
 
 /**
+ * Обрабатывает снапшот изменений карточек активной доски.
+ * Обновляет state.cards при добавлении/изменении/удалении карточек.
+ * @param {QuerySnapshot} snapshot — снапшот изменений из Firebase
+ */
+function handleCardsSnapshot(snapshot) {
+  snapshot.docChanges().forEach(change => {
+    if (change.type === 'added' || change.type === 'modified') {
+      state.cards[change.doc.id] = change.doc.data();
+    }
+    if (change.type === 'removed') {
+      delete state.cards[change.doc.id];
+    }
+  });
+  if (state.activeBoardId) {
+    state.boardCardsCache[state.activeBoardId] = { ...state.cards };
+  }
+  renderBoard();
+}
+
+/**
+ * Обрабатывает снапшот изменений комментариев карточки.
+ * Обновляет state.comments[cardId] при добавлении/изменении/удалении.
+ * @param {string} cardId — ID карточки
+ * @returns {Function} — callback для onSnapshot
+ */
+function makeCommentsHandler(cardId) {
+  return function(snapshot) {
+    const comments = [];
+    snapshot.forEach(doc => comments.push(doc.data()));
+    state.comments[cardId] = comments;
+    if (state.activeBoardId) {
+      state.boardCommentsCache[state.activeBoardId] = { ...state.comments };
+    }
+    renderBoard();
+  };
+}
+
+/**
+ * Загружает карточки доски из Firebase и подписывается на real-time обновления.
+ * Отменяет предыдущую подписку (если была). Для оффлайн-режима — данные уже в state.
+ * @param {string} boardId — ID доски
+ */
+async function loadBoardCards(boardId) {
+  if (state.cardsUnsub) {
+    state.cardsUnsub();
+    state.cardsUnsub = null;
+  }
+  state.comments = {};
+  state.commentsUnsubs = {};
+
+  const cached = state.boardCardsCache[boardId];
+
+  if (cached) {
+    state.cards = { ...cached };
+    state.comments = { ...(state.boardCommentsCache[boardId] || {}) };
+    state.cardsUnsub = subscribeCards(boardId, handleCardsSnapshot, error => {
+      console.error('Cards subscription error:', error);
+    });
+    renderBoard();
+    return;
+  }
+
+  const inner = document.getElementById('boardInner');
+  if (inner) inner.classList.add('board-loading');
+
+  if (!firebaseOk) {
+    state.cards = {};
+    if (inner) inner.classList.remove('board-loading');
+    renderBoard();
+    return;
+  }
+
+  try {
+    const snapshot = await cardsCol(boardId).get();
+    state.cards = {};
+    snapshot.forEach(doc => {
+      state.cards[doc.id] = doc.data();
+    });
+    state.boardCardsCache[boardId] = { ...state.cards };
+  } catch (error) {
+    console.error('Error loading cards:', error);
+    state.cards = {};
+  }
+
+  state.cardsUnsub = subscribeCards(boardId, handleCardsSnapshot, error => {
+    console.error('Cards subscription error:', error);
+  });
+
+  if (inner) inner.classList.remove('board-loading');
+  renderBoard();
+}
+
+/**
  * Главная функция запуска (boot) приложения.
  * 1) Инициализирует Firebase.
  * 2) Загружает голоса пользователя из localStorage.

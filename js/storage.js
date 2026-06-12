@@ -1,7 +1,8 @@
 /**
  * Сохраняет текущее состояние всех досок и активную доску в localStorage.
  * Используется как fallback-хранилище, когда Firebase недоступен.
- * Данные сохраняются под ключом 'rb_v4' в формате JSON.
+ * Данные сохраняются под ключом 'rb_v5' в формате JSON.
+ * Карточки хранятся отдельно в state.cards для совместимости с новой структурой.
  *
  * Примечание: если Firebase подключён (firebaseOk === true),
  * сохранение в localStorage пропускается — приоритет у Firebase.
@@ -9,7 +10,11 @@
 function lsSave() {
   if (firebaseOk) return;
   try {
-    localStorage.setItem('rb_v4', JSON.stringify({ boards: state.boards, activeBoardId: state.activeBoardId }));
+    localStorage.setItem('rb_v5', JSON.stringify({
+      boards: state.boards,
+      activeBoardId: state.activeBoardId,
+      cards: state.cards,
+    }));
   } catch (e) {
     console.warn('LS save failed', e);
   }
@@ -47,19 +52,40 @@ function lsLoadUserVotes() {
 }
 
 /**
- * Загружает все доски и ID активной доски из localStorage.
- * Читает ключ 'rb_v4', парсит JSON и заполняет state.boards и
- * state.activeBoardId. Возвращает true, если данные успешно загружены,
- * и false, если ключ не найден или произошла ошибка парсинга.
+ * Загружает все доски, карточки и ID активной доски из localStorage.
+ * Читает ключ 'rb_v5' (новый формат) или 'rb_v4' (старый формат для миграции).
+ * Возвращает true, если данные успешно загружены.
  *
  * Используется при старте приложения, когда Firebase недоступен.
  */
 function lsLoad() {
   try {
-    const saved = JSON.parse(localStorage.getItem('rb_v4') || 'null');
+    let saved = JSON.parse(localStorage.getItem('rb_v5') || 'null');
+    if (!saved) {
+      saved = JSON.parse(localStorage.getItem('rb_v4') || 'null');
+      if (saved && saved.boards) {
+        state.cards = {};
+        Object.values(saved.boards).forEach(board => {
+          if (board.cards && typeof board.cards === 'object') {
+            Object.values(board.cards).forEach(cards => {
+              if (Array.isArray(cards)) {
+                cards.forEach(card => {
+                  state.cards[card.id] = card;
+                });
+              }
+            });
+          }
+        });
+        Object.values(saved.boards).forEach(board => {
+          delete board.cards;
+        });
+        lsSave();
+      }
+    }
     if (!saved) return false;
     state.boards = saved.boards || {};
     state.activeBoardId = saved.activeBoardId || null;
+    state.cards = saved.cards || state.cards || {};
     return true;
   } catch (e) {
     return false;

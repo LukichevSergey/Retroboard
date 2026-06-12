@@ -1,13 +1,32 @@
 /**
- * Находит колонку, в которой находится карточка с указанным ID.
- * Перебирает все колонки текущей доски и ищет карточку по ID.
+ * Возвращает ID колонки для карточки из state.cards.
  * @param {number} cardId — ID карточки
- * @returns {string|null} — ID колонки, в которой найдена карточка, или null
+ * @returns {string|null} — ID колонки или null
  */
 function colOfCard(cardId) {
-  const board = curBoard();
-  if (!board) return null;
-  return Object.keys(board.cards).find(colId => board.cards[colId].some(card => card.id === cardId)) || null;
+  const card = state.cards[cardId];
+  if (!card) return null;
+  return card.columnId || null;
+}
+
+/**
+ * Возвращает массив карточек для указанной колонки, отсортированный по дате создания.
+ * @param {string} colId — ID колонки
+ * @returns {Array} — массив карточек
+ */
+function getCardsForColumn(colId) {
+  return Object.values(state.cards)
+    .filter(card => card.columnId === colId)
+    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+}
+
+/**
+ * Возвращает массив комментариев для указанной карточки.
+ * @param {number} cardId — ID карточки
+ * @returns {Array} — массив комментариев
+ */
+function getCommentsForCard(cardId) {
+  return state.comments[cardId] || [];
 }
 
 /**
@@ -42,11 +61,7 @@ function closeAdd(colId) {
 
 /**
  * Добавляет новую карточку в указанную колонку.
- * Читает текст из textarea, создаёт объект карточки с полями:
- *   id, text, votes (0), color (null), comments (пустой массив),
- *   ownerId (getClientId()), createdAt, modifiedAt.
- * Сохраняет в Firebase и localStorage, перерисовывает доску,
- * показывает toast «Карточка добавлена».
+ * Сохраняет карточку в подколлекцию cards в Firebase.
  * @param {string} colId — ID колонки, куда добавляется карточка
  */
 function addCard(colId) {
@@ -57,9 +72,21 @@ function addCard(colId) {
   if (!text) return;
   const newId = nextGlobalCardId();
   board._nextId = Math.max(board._nextId || 0, newId);
-  board.cards[colId].push({ id: newId, text, votes: 0, color: null, comments: [], ownerId: getClientId(), createdAt: Date.now(), modifiedAt: Date.now() });
+
+  const card = {
+    id: newId,
+    text,
+    votes: 0,
+    color: null,
+    ownerId: getClientId(),
+    createdAt: Date.now(),
+    modifiedAt: Date.now(),
+    columnId: colId,
+  };
+
+  state.cards[newId] = card;
   closeAdd(colId);
-  fbSave(board);
+  fbSaveCard(board.id, card);
   lsSave();
   renderBoard();
   showToast('Карточка добавлена');
@@ -67,20 +94,15 @@ function addCard(colId) {
 
 /**
  * Удаляет карточку по её ID.
- * Проверяет права доступа: удалить может только владелец карточки (ownerId === clientId).
- * Если карточка не имеет владельца — показывает предупреждение.
- * После подтверждения пользователем удаляет карточку из массива колонки,
- * сохраняет изменения и перерисовывает доску.
+ * Проверяет права доступа: удалить может только владелец карточки.
  * @param {number} cardId — ID карточки для удаления
  */
 function delCard(cardId) {
   const board = curBoard();
   if (!board) return;
-  const col = colOfCard(cardId);
-  if (!col) return;
-  const card = board.cards[col].find(c => c.id === cardId);
+  const card = state.cards[cardId];
   if (!card) return;
-  // Только владелец может удалить (или запретить если владелец отсутствует)
+
   const clientId = getClientId();
   if (!card.ownerId) {
     alert('Эта карточка не имеет владельца и не может быть удалена.');
@@ -90,11 +112,11 @@ function delCard(cardId) {
     alert('Вы не можете удалить чужую карточку.');
     return;
   }
-  // Запрос подтверждения перед удалением
   const confirmed = window.confirm('Вы уверены, что хотите удалить карточку "' + card.text.substring(0, 30) + (card.text.length > 30 ? '...' : '') + '"?\n\nЭто действие нельзя отменить.');
   if (!confirmed) return;
-  board.cards[col] = board.cards[col].filter(card => card.id !== cardId);
-  fbSave(board);
+
+  delete state.cards[cardId];
+  fbDelCard(board.id, cardId);
   lsSave();
   renderBoard();
   showToast('Карточка удалена');
@@ -102,17 +124,12 @@ function delCard(cardId) {
 
 /**
  * Голосует за карточку (или снимает голос).
- * Если пользователь уже голосовал — уменьшает счётчик на 1 и удаляет из state.userVotes.
- * Если не голосовал — увеличивает счётчик на 1 и добавляет в state.userVotes.
- * Сохраняет голоса в localStorage и перерисовывает доску.
  * @param {number} cardId — ID карточки
  */
 function vote(cardId) {
   const board = curBoard();
   if (!board) return;
-  const col = colOfCard(cardId);
-  if (!col) return;
-  const card = board.cards[col].find(card => card.id === cardId);
+  const card = state.cards[cardId];
   if (!card) return;
 
   const hasVoted = state.userVotes.has(cardId);
@@ -125,7 +142,7 @@ function vote(cardId) {
   }
   if ('voted' in card) delete card.voted;
 
-  fbSave(board);
+  fbSaveCard(board.id, card);
   lsSave();
   lsSaveUserVotes();
   renderBoard();
@@ -133,18 +150,13 @@ function vote(cardId) {
 
 /**
  * Открывает палитру выбора цвета фона карточки.
- * Сохраняет ID карточки в state._cardPickerCardId, формирует HTML палитры
- * из массива CARD_COLORS плюс кнопка «По умолчанию» (сброс цвета).
- * Подсвечивает текущий цвет как active. Позиционирует палитру рядом с кликом.
  * @param {MouseEvent} event — событие клика
  * @param {number} cardId — ID карточки, цвет которой меняется
  */
 function openCardColorPopup(event, cardId) {
   event.stopPropagation();
   state._cardPickerCardId = cardId;
-  const board = curBoard();
-  const columnId = colOfCard(cardId);
-  const card = columnId ? board.cards[columnId].find(card => card.id === cardId) : null;
+  const card = state.cards[cardId];
   const currentColor = card?.color || null;
   document.getElementById('colorPopupTitle').textContent = 'Цвет карточки';
   const swatches = document.getElementById('colorSwatches');
@@ -163,20 +175,16 @@ function openCardColorPopup(event, cardId) {
 
 /**
  * Применяет выбранный цвет фона к карточке.
- * Устанавливает поле card.color, сохраняет в Firebase и localStorage,
- * закрывает палитру и перерисовывает доску.
  * @param {number}    cardId — ID карточки
  * @param {string|null} color — HEX-код цвета или null (сброс к дефолту)
  */
 function applyCardColor(cardId, color) {
   const board = curBoard();
   if (!board) return;
-  const col = colOfCard(cardId);
-  if (!col) return;
-  const card = board.cards[col].find(card => card.id === cardId);
+  const card = state.cards[cardId];
   if (!card) return;
   card.color = color;
-  fbSave(board);
+  fbSaveCard(board.id, card);
   lsSave();
   closeColorPopup();
   renderBoard();
@@ -184,60 +192,118 @@ function applyCardColor(cardId, color) {
 
 /**
  * Переключает видимость секции комментариев карточки.
- * Добавляет/удаляет ID карточки из state.commentOpenState (Set).
- * Перерисовывает доску для обновления UI.
+ * Загружает комментарии из Firebase при первом раскрытии.
  * @param {number} cardId — ID карточки
  */
 function toggleComments(cardId) {
   if (state.commentOpenState.has(cardId)) {
     state.commentOpenState.delete(cardId);
+    if (state.commentsUnsubs[cardId]) {
+      state.commentsUnsubs[cardId]();
+      delete state.commentsUnsubs[cardId];
+    }
   } else {
     state.commentOpenState.add(cardId);
+    loadComments(cardId);
   }
   renderBoard();
 }
 
 /**
+ * Загружает комментарии карточки из Firebase и подписывается на real-time.
+ * @param {number} cardId — ID карточки
+ */
+function saveCommentsCache() {
+  if (state.activeBoardId) {
+    state.boardCommentsCache[state.activeBoardId] = { ...state.comments };
+  }
+}
+
+/**
+ * Загружает комментарии карточки из Firebase и подписывается на real-time.
+ * @param {number} cardId — ID карточки
+ */
+async function loadComments(cardId) {
+  const board = curBoard();
+  if (!board || !firebaseOk) return;
+
+  if (state.commentsUnsubs[cardId]) {
+    state.commentsUnsubs[cardId]();
+  }
+
+  const alreadyCached = state.comments[cardId] && state.comments[cardId].length > 0;
+
+  if (!alreadyCached) {
+    state._loadingComments.add(cardId);
+    renderBoard();
+
+    try {
+      const snapshot = await commentsCol(board.id, cardId).get();
+      const comments = [];
+      snapshot.forEach(doc => comments.push(doc.data()));
+      state.comments[cardId] = comments;
+    } catch (error) {
+      console.error('Error loading comments:', error);
+      state.comments[cardId] = [];
+    }
+
+    state._loadingComments.delete(cardId);
+    saveCommentsCache();
+  }
+
+  state.commentsUnsubs[cardId] = subscribeComments(
+    board.id, cardId,
+    makeCommentsHandler(cardId),
+    error => console.error('Comments subscription error:', error)
+  );
+
+  if (alreadyCached) renderBoard();
+}
+
+/**
  * Сохраняет новый комментарий к карточке.
- * Читает текст из textarea #comment-input-{cardId}, создаёт объект комментария
- * с полями: id (cm_ + uid), text, createdAt, ownerId, modifiedAt.
- * Добавляет в массив card.comments, сохраняет в Firebase и localStorage,
- * раскрывает секцию комментариев и перерисовывает доску.
  * @param {number} cardId — ID карточки, к которой добавляется комментарий
  */
 function saveComment(cardId) {
   const board = curBoard();
   if (!board) return;
-  const col = colOfCard(cardId);
-  if (!col) return;
-  const card = board.cards[col].find(card => card.id === cardId);
+  const card = state.cards[cardId];
   if (!card) return;
   const input = document.getElementById('comment-input-' + cardId);
   if (!input) return;
   const text = input.value.trim();
   if (!text) return;
-  card.comments = card.comments || [];
-  card.comments.push({ id: 'cm_' + uid(), text, createdAt: Date.now(), ownerId: getClientId(), modifiedAt: Date.now() });
+
+  const comment = {
+    id: 'cm_' + uid(),
+    text,
+    createdAt: Date.now(),
+    ownerId: getClientId(),
+    modifiedAt: Date.now(),
+  };
+
+  if (!state.comments[cardId]) state.comments[cardId] = [];
+  state.comments[cardId].push(comment);
+
+  card.commentCount = (card.commentCount || 0) + 1;
+  fbSaveCard(board.id, card);
+
   state.commentOpenState.add(cardId);
   input.value = '';
-  fbSave(board);
+  fbSaveComment(board.id, cardId, comment);
   lsSave();
+  saveCommentsCache();
   renderBoard();
 }
 
 /**
  * Сохраняет отредактированный текст карточки.
- * Проверяет права доступа (только владелец может редактировать).
- * Читает новый текст из модального окна (card-edit-input или modal-comment-edit-input),
- * обновляет card.text и card.modifiedAt. Закрывает состояние редактирования.
  * @param {number} cardId — ID редактируемой карточки
  */
 function saveCardEdit(cardId) {
   const board = curBoard();
   if (!board) return;
-  const col = colOfCard(cardId);
-  if (!col) return;
-  const card = board.cards[col].find(c => c.id === cardId);
+  const card = state.cards[cardId];
   if (!card) return;
   if (!card.ownerId || card.ownerId !== getClientId()) {
     alert('Вы не можете редактировать эту карточку.');
@@ -245,7 +311,6 @@ function saveCardEdit(cardId) {
     renderBoard();
     return;
   }
-  // Приоритет: модальный ввод, если есть (переиспользует modal comment edit)
   const input = document.getElementById('card-edit-input-' + cardId) || document.getElementById('modal-comment-edit-input');
   if (!input) return;
   const text = input.value.trim();
@@ -253,29 +318,16 @@ function saveCardEdit(cardId) {
   card.text = text;
   card.modifiedAt = Date.now();
   state._editingCardId = null;
-  fbSave(board);
+  fbSaveCard(board.id, card);
   lsSave();
   renderBoard();
   showToast('Карточка обновлена');
 }
 
-/**
- * Отмена редактирования карточки (заглушка).
- * Редактирование карточек теперь происходит только через модальное окно.
- */
 function cancelCardEdit(cardId) {
   // noop: editing moved to modal-only flow
 }
 
-// ---- Редактирование и удаление комментариев ----
-
-/**
- * Начинает редактирование комментария — устанавливает state._editingComment
- * с указанием ID карточки и комментария. Перерисовывает доску, чтобы
- * отобразить textarea вместо текста комментария.
- * @param {number}   cardId    — ID карточки
- * @param {string}   commentId — ID комментария
- */
 function startEditComment(cardId, commentId) {
   state._editingComment = { cardId, commentId };
   renderBoard();
@@ -283,20 +335,14 @@ function startEditComment(cardId, commentId) {
 
 /**
  * Сохраняет отредактированный текст комментария.
- * Проверяет права доступа (только владелец может редактировать).
- * Читает новый текст из textarea, обновляет comment.text и comment.modifiedAt.
- * Сохраняет в Firebase и localStorage, закрывает режим редактирования.
  * @param {number} cardId    — ID карточки
  * @param {string} commentId — ID редактируемого комментария
  */
 function saveCommentEdit(cardId, commentId) {
   const board = curBoard();
   if (!board) return;
-  const col = colOfCard(cardId);
-  if (!col) return;
-  const card = board.cards[col].find(c => c.id === cardId);
-  if (!card) return;
-  const comment = (card.comments || []).find(c => c.id === commentId);
+  const comments = state.comments[cardId] || [];
+  const comment = comments.find(c => c.id === commentId);
   if (!comment) return;
   if (!comment.ownerId || comment.ownerId !== getClientId()) {
     alert('Вы не можете редактировать этот комментарий.');
@@ -311,16 +357,13 @@ function saveCommentEdit(cardId, commentId) {
   comment.text = text;
   comment.modifiedAt = Date.now();
   state._editingComment = null;
-  fbSave(board);
+  fbSaveComment(board.id, cardId, comment);
   lsSave();
+  saveCommentsCache();
   renderBoard();
   showToast('Комментарий обновлён');
 }
 
-/**
- * Отменяет редактирование комментария.
- * Сбрасывает state._editingComment в null и перерисовывает доску.
- */
 function cancelCommentEdit() {
   state._editingComment = null;
   renderBoard();
@@ -328,34 +371,34 @@ function cancelCommentEdit() {
 
 /**
  * Удаляет комментарий по его ID.
- * Проверяет права доступа (только владелец может удалить).
- * После подтверждения пользователем удаляет из массива card.comments,
- * сохраняет изменения и перерисовывает доску.
  * @param {number} cardId    — ID карточки
  * @param {string} commentId — ID комментария для удаления
  */
 function delComment(cardId, commentId) {
   const board = curBoard();
   if (!board) return;
-  const col = colOfCard(cardId);
-  if (!col) return;
-  const card = board.cards[col].find(c => c.id === cardId);
-  if (!card) return;
-  const comment = (card.comments || []).find(c => c.id === commentId);
+  const comments = state.comments[cardId] || [];
+  const comment = comments.find(c => c.id === commentId);
   if (!comment) return;
   if (!comment.ownerId) { alert('Этот комментарий не имеет владельца и не может быть удалён.'); return; }
   if (comment.ownerId !== getClientId()) { alert('Вы не можете удалить чужой комментарий.'); return; }
   const confirmed = window.confirm('Удалить комментарий?');
   if (!confirmed) return;
-  card.comments = (card.comments || []).filter(c => c.id !== commentId);
-  fbSave(board);
+
+  state.comments[cardId] = comments.filter(c => c.id !== commentId);
+  fbDelComment(board.id, cardId, commentId);
+
+  const card = state.cards[cardId];
+  if (card) {
+    card.commentCount = Math.max(0, (card.commentCount || 0) - 1);
+    fbSaveCard(board.id, card);
+  }
+
   lsSave();
+  saveCommentsCache();
   renderBoard();
 }
 
-/**
- * Экспорт функций карточек в глобальную область window.
- */
 window.saveCardEdit = saveCardEdit;
 window.cancelCardEdit = cancelCardEdit;
 window.startEditComment = startEditComment;
@@ -363,19 +406,9 @@ window.saveCommentEdit = saveCommentEdit;
 window.cancelCommentEdit = cancelCommentEdit;
 window.delComment = delComment;
 
-/**
- * Открывает модальное окно редактирования текста карточки.
- * Переиспользует модальное окно редактирования комментариев (#editCommentOverlay).
- * Устанавливает заголовок «Редактировать карточку», заполняет textarea текущим текстом,
- * привязывает обработчик кнопки «Сохранить» к saveCardEdit(cardId).
- * @param {number} cardId — ID редактируемой карточки
- */
 window.openCardEditModal = function(cardId) {
-  const board = curBoard(); if (!board) return;
-  const col = colOfCard(cardId); if (!col) return;
-  const card = board.cards[col].find(c => c.id === cardId); if (!card) return;
+  const card = state.cards[cardId]; if (!card) return;
   if (!card.ownerId || card.ownerId !== getClientId()) { alert('Вы не можете редактировать эту карточку.'); return; }
-  // Переиспользует модалку редактирования комментариев для карточек
   document.getElementById('editCommentModalTitle').textContent = 'Редактировать карточку';
   const ta = document.getElementById('modal-comment-edit-input');
   ta.value = card.text || '';
@@ -384,19 +417,9 @@ window.openCardEditModal = function(cardId) {
   setTimeout(() => ta.focus(), 50);
 };
 
-/**
- * Открывает модальное окно редактирования текста комментария.
- * Переиспользует модальное окно #editCommentOverlay.
- * Устанавливает заголовок «Редактировать комментарий», заполняет textarea,
- * привязывает обработчик кнопки «Сохранить» к saveCommentEdit(cardId, commentId).
- * @param {number} cardId    — ID карточки
- * @param {string} commentId — ID редактируемого комментария
- */
 window.openCommentEditModal = function(cardId, commentId) {
-  const board = curBoard(); if (!board) return;
-  const col = colOfCard(cardId); if (!col) return;
-  const card = board.cards[col].find(c => c.id === cardId); if (!card) return;
-  const comment = (card.comments || []).find(c => c.id === commentId); if (!comment) return;
+  const comments = state.comments[cardId] || [];
+  const comment = comments.find(c => c.id === commentId); if (!comment) return;
   if (!comment.ownerId || comment.ownerId !== getClientId()) { alert('Вы не можете редактировать этот комментарий.'); return; }
   document.getElementById('editCommentModalTitle').textContent = 'Редактировать комментарий';
   const ta = document.getElementById('modal-comment-edit-input');
@@ -406,21 +429,11 @@ window.openCommentEditModal = function(cardId, commentId) {
   setTimeout(() => ta.focus(), 50);
 };
 
-/**
- * Обработчик нажатия мыши на карточку для начала перетаскивания (drag & drop).
- * Игнорирует клики по интерактивным элементам (кнопки, ссылки, textarea, input).
- * «Заряжает» drag-состояние (armed = true) но не начинает перетаскивание
- * до тех пор, пока пользователь не сдвинет мышь более чем на 6px (порог).
- * Это позволяет выделять текст в карточках без случайного перетаскивания.
- * @param {MouseEvent} event — событие mousedown
- * @param {number} cardId    — ID карточки
- */
 function onCardDown(event, cardId) {
   if (event.target.closest('button, a, textarea, input, select, .comment-item, .comment-form, .comment-btn, .card-text')) return;
   const cardElement = document.getElementById('card-' + cardId);
   if (!cardElement) return;
   const rect = cardElement.getBoundingClientRect();
-  // Заряжает drag но не начинает пока курсор не сдвинется за порог — позволяет выделять текст
   state.dnd = {
     armed: true,
     active: false,
@@ -437,30 +450,14 @@ function onCardDown(event, cardId) {
   document.addEventListener('mouseup', onDragUp);
 }
 
-/**
- * Обработчик движения мыши при перетаскивании карточки.
- * Если drag ещё не активен — проверяет расстояние от начальной точки (порог 6px).
- * При превышении порога:
- *   1) Создаёт DOM-элемент «призрак» (ghost) — визуальную копию карточки,
- *   2) Отключает выделение текста на странице,
- *   3) Устанавливает флаг active = true.
- * Далее:
- *   - Перемещает ghost вслед за курсором,
- *   - Определяет целевую колонку по позиции курсора,
- *   - Вычисляет позицию вставки (перед какой карточкой),
- *   - Отображает визуальный индикатор места вставки (drop-ind).
- * @param {MouseEvent} event — событие mousemove
- */
 function onDragMove(event) {
   if (!state.dnd || !state.dnd.armed) return;
 
-  // Если drag ещё не начался, проверяет порог движения для начала перетаскивания (текст всё ещё можно выделять)
   if (!state.dnd.active) {
     const dx = event.clientX - state.dnd.startX;
     const dy = event.clientY - state.dnd.startY;
-    if (Math.sqrt(dx * dx + dy * dy) < 6) return; // порог в пикселях
+    if (Math.sqrt(dx * dx + dy * dy) < 6) return;
 
-    // Начинает drag
     state.dnd.active = true;
     const cardElement = document.getElementById('card-' + state.dnd.cardId);
     if (!cardElement) return;
@@ -472,13 +469,12 @@ function onDragMove(event) {
     document.body.appendChild(ghost);
     state.dnd.ghost = ghost;
     cardElement.classList.add('is-dragging');
-    // Отключает выделение текста во время drag и очищает текущее выделение
     try {
       state._prevUserSelect = document.body.style.userSelect;
       document.body.style.userSelect = 'none';
       if (window.getSelection && window.getSelection().removeAllRanges) window.getSelection().removeAllRanges();
     } catch (e) {
-      // игнорировать
+      // ignore
     }
   }
 
@@ -489,7 +485,6 @@ function onDragMove(event) {
   if (!board) return;
   board.cols.forEach(col => document.querySelector(`.column[data-col="${col.id}"]`)?.classList.remove('drag-over'));
   let targetCol = null;
-  // Определяет целевую колонку по позиции курсора
   board.cols.some(col => {
     const body = document.getElementById('cb-' + col.id);
     if (!body) return false;
@@ -507,8 +502,8 @@ function onDragMove(event) {
   if (!body) return;
   const cardsContainer = body.querySelector('.cards-list') || body;
   let insertBefore = null;
-  // Определяет позицию вставки: перед какой карточкой (или в конец)
-  for (const card of (board.cards[targetCol] || [])) {
+  const targetCards = getCardsForColumn(targetCol);
+  for (const card of targetCards) {
     if (card.id === state.dnd.cardId) continue;
     const cardEl = document.getElementById('card-' + card.id);
     if (!cardEl) continue;
@@ -519,7 +514,6 @@ function onDragMove(event) {
     }
   }
   state.dnd.insertBefore = insertBefore;
-  // Визуальный индикатор места вставки
   const indicator = document.createElement('div');
   indicator.className = 'drop-ind';
   if (insertBefore !== null) {
@@ -530,16 +524,6 @@ function onDragMove(event) {
   }
 }
 
-/**
- * Обработчик отпускания кнопки мыши — завершение перетаскивания.
- * Удаляет ghost-элемент, индикаторы, слушатели событий.
- * Если drag был активным и есть целевая колонка:
- *   1) Удаляет карточку из исходной колонки,
- *   2) Вставляет в целевую колонку на вычисленную позицию,
- *   3) Сохраняет изменения и перерисовывает доску.
- * Восстанавливает выделение текста. Сбрасывает состояние drag.
- * Если есть отложенная перерисовка (renderBoard во время drag) — выполняет её.
- */
 function onDragUp() {
   document.removeEventListener('mousemove', onDragMove);
   document.removeEventListener('mouseup', onDragUp);
@@ -554,37 +538,28 @@ function onDragUp() {
   cardElement?.classList.remove('is-dragging');
 
   if (state.dnd && state.dnd.active && state.dnd.targetCol && board) {
-    const fromCol = colOfCard(state.dnd.cardId);
-    if (fromCol) {
-      const cardObject = board.cards[fromCol].find(card => card.id === state.dnd.cardId);
-      board.cards[fromCol] = board.cards[fromCol].filter(card => card.id !== state.dnd.cardId);
-      const insertIndex = state.dnd.insertBefore === null
-        ? board.cards[state.dnd.targetCol].length
-        : board.cards[state.dnd.targetCol].findIndex(card => card.id === state.dnd.insertBefore);
-      board.cards[state.dnd.targetCol].splice(insertIndex < 0 ? board.cards[state.dnd.targetCol].length : insertIndex, 0, cardObject);
-      fbSave(board);
+    const card = state.cards[state.dnd.cardId];
+    if (card) {
+      const fromCol = card.columnId;
+      card.columnId = state.dnd.targetCol;
+      fbSaveCard(board.id, card);
       lsSave();
       renderBoard();
       if (fromCol !== state.dnd.targetCol) showToast('Карточка перемещена');
     }
   }
   state.dnd = { active: false, armed: false, cardId: null, ghost: null, ox: 0, oy: 0, startX: 0, startY: 0, targetCol: null, insertBefore: null };
-  // Восстанавливает поведение выделения текста
   try {
     if (state._prevUserSelect !== undefined) {
       document.body.style.userSelect = state._prevUserSelect || '';
       delete state._prevUserSelect;
     }
   } catch (e) {
-    // игнорировать
+    // ignore
   }
   if (state._pendingBoardRender) renderBoard();
 }
 
-/**
- * Глобальный обработчик клика мыши — закрывает палитру цветов,
- * если клик был сделан вне палитры.
- */
 document.addEventListener('mousedown', event => {
   const popup = document.getElementById('colorPopup');
   if (popup?.classList.contains('open') && !popup.contains(event.target)) {
@@ -592,9 +567,6 @@ document.addEventListener('mousedown', event => {
   }
 });
 
-/**
- * Экспорт функций карточек в глобальную область window.
- */
 window.openAdd = openAdd;
 window.closeAdd = closeAdd;
 window.addCard = addCard;
@@ -606,28 +578,19 @@ window.toggleComments = toggleComments;
 window.saveComment = saveComment;
 window.onCardDown = onCardDown;
 
-/**
- * Отменяет текущее перетаскивание, если оно активно или «заряжено».
- * Вызывает onDragUp() для корректной очистки состояния.
- * Используется при открытии контекстного меню, потере фокуса, скрытии страницы.
- */
 function cancelDragIfActive() {
   if (state.dnd && (state.dnd.armed || state.dnd.active)) {
     try {
       onDragUp();
     } catch (e) {
-      // Фоллбэк: гарантирует очистку dnd-состояния
       state.dnd = { active: false, armed: false, cardId: null, ghost: null, ox: 0, oy: 0, startX: 0, startY: 0, targetCol: null, insertBefore: null };
     }
   }
 }
 
-// Если пользователь открывает контекстное меню, отменяется pointer или
-// меняется видимость/фокус страницы — отменяет drag чтобы избежать «зависших» карточек.
 document.addEventListener('contextmenu', event => {
   if (state.dnd && (state.dnd.armed || state.dnd.active)) {
     cancelDragIfActive();
-    // не предотвращаем поведение: разрешаем стандартное контекстное меню
   }
 });
 

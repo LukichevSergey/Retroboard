@@ -40,9 +40,6 @@ function selectScheme(id) {
 
 /**
  * Создаёт новую колонку в текущей доске.
- * Читает название из input (или «Новая колонка» по умолчанию),
- * генерирует уникальный ID, добавляет колонку в board.cols,
- * создаёт пустой массив карточек в board.cards.
  * Сохраняет в Firebase и localStorage, закрывает модалку,
  * перерисовывает доску и фокусирует поле ввода названия новой колонки.
  */
@@ -52,7 +49,6 @@ function confirmNewCol() {
   const label = document.getElementById('newColName').value.trim() || 'Новая колонка';
   const colId = 'c_' + uid();
   board.cols.push({ id: colId, label, s: state._newColScheme });
-  board.cards[colId] = [];
   fbSave(board);
   lsSave();
   closeOverlay('newColOverlay');
@@ -129,14 +125,13 @@ function applyColScheme(colId, schemeId) {
 /**
  * Открывает модальное окно подтверждения удаления колонки.
  * Показывает название колонки и количество карточек в ней.
- * Привязывает обработчик кнопки «Удалить» к doDelCol.
  * @param {string} colId — ID колонки для удаления
  */
 function confirmDelCol(colId) {
   state._pendingDelCol = colId;
   const board = curBoard();
   const column = board?.cols.find(col => col.id === colId);
-  const count = (board?.cards[colId] || []).length;
+  const count = getCardsForColumn(colId).length;
   document.getElementById('delColTitle').textContent = `Удалить «${column?.label}»?`;
   document.getElementById('delColMsg').textContent = count > 0
     ? `В колонке ${count} карт${count === 1 ? 'очка' : count < 5 ? 'очки' : 'очек'}. Все будут удалены.`
@@ -147,14 +142,20 @@ function confirmDelCol(colId) {
 
 /**
  * Выполняет удаление колонки после подтверждения.
- * Удаляет колонку из board.cols и её карточки из board.cards.
- * Сохраняет изменения и перерисовывает доску.
+ * Удаляет колонку из board.cols и все карточки колонки из Firebase.
  */
-function doDelCol() {
+async function doDelCol() {
   const board = curBoard();
   if (!board || !state._pendingDelCol) return;
-  board.cols = board.cols.filter(col => col.id !== state._pendingDelCol);
-  delete board.cards[state._pendingDelCol];
+  const colId = state._pendingDelCol;
+
+  const cardsToDelete = getCardsForColumn(colId);
+  for (const card of cardsToDelete) {
+    delete state.cards[card.id];
+    fbDelCard(board.id, card.id);
+  }
+
+  board.cols = board.cols.filter(col => col.id !== colId);
   state._pendingDelCol = null;
   closeOverlay('delColOverlay');
   fbSave(board);

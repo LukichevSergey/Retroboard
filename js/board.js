@@ -69,8 +69,8 @@ function cardHTML(card) {
   const contrastText = card.color ? getContrastColor(card.color) : null;
   const btnBg = contrastText === '#fff' ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.7)';
   const bgStyle = card.color ? `style="--card-bg:${card.color};--card-text:${contrastText};--card-btn-bg:${btnBg};--card-btn-fg:${contrastText}"` : '';
-  const comments = card.comments || [];
-  const count = comments.length;
+  const count = card.commentCount || 0;
+  const comments = getCommentsForCard(card.id);
   const commentCount = count ? `<span class="comment-count">${count}</span>` : '';
   const openClass = state.commentOpenState.has(card.id) ? ' open' : '';
   const voteLabel = card.votes > 0 ? `${card.votes}` : '';
@@ -292,6 +292,9 @@ function applyCardStyles(cardEl, card) {
  * @returns {string} — HTML-строка списка комментариев
  */
 function renderCommentItems(comments, cardId) {
+  if (state._loadingComments.has(cardId)) {
+    return '<div class="comment-loading"><div class="comment-spinner"></div>Загрузка...</div>';
+  }
   if (!comments || comments.length === 0) return '<div class="comment-empty">Нет комментариев</div>';
   return comments.map(comment => {
     const isEditing = state._editingComment && state._editingComment.commentId === comment.id && state._editingComment.cardId === cardId;
@@ -354,7 +357,7 @@ function updateCardElement(cardEl, card) {
 
   const commentBtn = cardEl.querySelector('.comment-btn');
   if (commentBtn) {
-    const commentCount = (card.comments || []).length;
+    const commentCount = card.commentCount || 0;
     commentBtn.classList.toggle('active', state.commentOpenState.has(card.id));
     const commentCountHtml = commentCount ? `<span class="comment-count">${commentCount}</span>` : '';
     commentBtn.innerHTML = `
@@ -368,13 +371,14 @@ function updateCardElement(cardEl, card) {
     commentSection.classList.toggle('open', state.commentOpenState.has(card.id));
     const commentsList = commentSection.querySelector('.comments-list');
     if (commentsList) {
-      commentsList.innerHTML = renderCommentItems(card.comments || [], card.id);
+      commentsList.innerHTML = renderCommentItems(getCommentsForCard(card.id), card.id);
     }
   }
 
   // Пересоздаёт подвал для актуализации кнопок edit/delete
   const cardFooter = cardEl.querySelector('.card-footer');
   if (cardFooter) {
+    const commentCount = card.commentCount || 0;
     const voteLabel = card.votes > 0 ? `${card.votes}` : '';
     const userVoted = state.userVotes.has(card.id);
     const isOwner = card.ownerId && (card.ownerId === getClientId());
@@ -386,7 +390,7 @@ function updateCardElement(cardEl, card) {
       `</button>\n      <button class="comment-btn${state.commentOpenState.has(card.id) ? ' active' : ''}" onclick="toggleComments(${card.id})" title="Комментарии">` +
         `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
           `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>` +
-        `</svg>${card.comments?.length ? `<span class="comment-count">${card.comments.length}</span>` : ''}` +
+        `</svg>${commentCount ? `<span class="comment-count">${commentCount}</span>` : ''}` +
       `</button>\n      <div class="card-spacer"></div>\n      <button class="card-color-btn" onclick="openCardColorPopup(event, ${card.id})" title="Цвет карточки">` +
         `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
           `<path d="M12 2a10 10 0 1 0 10 10"/>` +
@@ -612,7 +616,7 @@ function renderBoard({ preserveInputState = true } = {}) {
   const existingMap = new Map(existingCols.map(el => [el.dataset.col, el]));
 
   b.cols.forEach((col, index) => {
-    const cards = b.cards[col.id] || [];
+    const cards = getCardsForColumn(col.id);
     let colEl = existingMap.get(col.id);
     if (!colEl) {
       colEl = createColumnElement(col, cards);

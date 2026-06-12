@@ -44,7 +44,7 @@ function selectBoard(id) {
   document.getElementById('boardInner').style.display = '';
   document.getElementById('copyBoardBtn').style.display = '';
   renderSidebar();
-  renderBoard();
+  loadBoardCards(id);
 }
 
 /**
