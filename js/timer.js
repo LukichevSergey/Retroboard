@@ -1,4 +1,13 @@
-
+/**
+ * Вычисляет оставшееся время таймера на основе данных из Firebase.
+ * Если таймер не запущен (running === false) или нет данных —
+ * возвращает durationSec (номинальную длительность).
+ * Если таймер запущен — вычисляет разницу между текущим временем
+ * и стартовым временем, вычитает из общей длительности.
+ * @param {Object} data — данные документа таймера из Firestore
+ *   (running, durationSec, startTimestamp)
+ * @returns {number} — оставшееся время в секундах (не меньше 0)
+ */
 function computeRemainingSeconds(data) {
   if (!data || !data.running) return data?.durationSec || 300;
   if (!data.startTimestamp) return data.durationSec;
@@ -9,6 +18,15 @@ function computeRemainingSeconds(data) {
   return remaining > 0 ? remaining : 0;
 }
 
+/**
+ * Обновляет отображение таймера на странице.
+ * Форматирует время в MM:SS и обновляет текст #timerDisplay.
+ * Меняет CSS-класс таймер-пилюли (#timerPill):
+ *   - 'expired' — время вышло (<=0 и таймер запущен),
+ *   - 'running' — таймер запущен и идёт,
+ *   - по умолчанию — таймер остановлен.
+ * @param {number} seconds — оставшееся время в секундах
+ */
 function updateGlobalTimerUI(seconds) {
   const rounded = Math.max(0, Math.floor(seconds));
   const mins = Math.floor(rounded / 60);
@@ -26,6 +44,16 @@ function updateGlobalTimerUI(seconds) {
   }
 }
 
+/**
+ * Подписывается на обновления документа таймера в Firebase Firestore.
+ * При каждом изменении документа:
+ *   1) Если таймер не запущен — останавливает локальный интервал,
+ *      сбрасывает UI.
+ *   2) Если таймер запущен и время ещё есть — запускает локальный
+ *      интервал (setInterval 1 сек), который обновляет UI каждую секунду.
+ *   3) Если время вышло — автоматически останавливает таймер через stopGlobalTimer().
+ * Подписка работает в реальном времени: все клиенты видят одинаковое время.
+ */
 function subscribeGlobalTimer() {
   if (!firebaseOk) return;
   if (state.globalTimerUnsub) state.globalTimerUnsub();
@@ -67,6 +95,12 @@ function subscribeGlobalTimer() {
   });
 }
 
+/**
+ * Запускает глобальный таймер на заданное количество секунд.
+ * Записывает в Firestore документ с running: true, durationSec и серверным временем старта.
+ * Все подключённые клиенты увидят запуск таймера через подписку.
+ * @param {number} durationSec — длительность таймера в секундах
+ */
 async function startGlobalTimer(durationSec) {
   if (!firebaseOk) {
     showToast('Нет соединения с Firebase, таймер не синхронизирован');
@@ -81,6 +115,12 @@ async function startGlobalTimer(durationSec) {
   showToast(`Таймер запущен на ${Math.floor(durationSec / 60)} мин`);
 }
 
+/**
+ * Останавливает глобальный таймер.
+ * Записывает в Firestore running: false (с merge: true, чтобы не стирать durationSec).
+ * Останавливает локальный интервал и сбрасывает флаг timerRunning.
+ * Показывает уведомление «Таймер остановлен».
+ */
 async function stopGlobalTimer() {
   if (!firebaseOk) return;
   await timerDocRef().set({
@@ -95,6 +135,12 @@ async function stopGlobalTimer() {
   showToast('Таймер остановлен');
 }
 
+/**
+ * Открывает модальное окно настройки таймера.
+ * Устанавливает значение input'а (в минутах) равным текущему времени,
+ * меняет текст кнопки на «Остановить» если таймер запущен, иначе «Запустить».
+ * Показывает оверлей #timerOverlay.
+ */
 function openTimerModal() {
   const minutes = Math.max(1, Math.ceil(state.localTimerSeconds / 60));
   const input = document.getElementById('timerMinInput');
@@ -104,6 +150,11 @@ function openTimerModal() {
   document.getElementById('timerOverlay').classList.add('open');
 }
 
+/**
+ * Обрабатывает нажатие кнопки «Запустить» / «Остановить» в модальном окне таймера.
+ * Если таймер запущен — останавливает его, иначе — запускает на указанное количество минут.
+ * Закрывает модальное окно после действия.
+ */
 function handleTimerAction() {
   const minutes = parseInt(document.getElementById('timerMinInput').value) || 5;
   const seconds = minutes * 60;
@@ -115,6 +166,12 @@ function handleTimerAction() {
   closeOverlay('timerOverlay');
 }
 
+/**
+ * Инициализирует глобальный таймер при старте приложения.
+ * Если Firebase доступен — подписывается на обновления таймера.
+ * Если Firebase недоступен — устанавливает дефолтные 300 секунд (5 минут)
+ * и обновляет UI.
+ */
 function initGlobalTimer() {
   if (firebaseOk) {
     subscribeGlobalTimer();
@@ -125,9 +182,17 @@ function initGlobalTimer() {
   }
 }
 
+/**
+ * Закрывает оверлей по его ID (дубликат функции из ui.js для изоляции модуля).
+ * @param {string} id — ID HTML-элемента оверлея
+ */
 function closeOverlay(id) {
   document.getElementById(id)?.classList.remove('open');
 }
 
+/**
+ * Экспорт функций таймера в глобальную область window,
+ * чтобы они были доступны из HTML-атрибутов (onclick).
+ */
 window.openTimerModal = openTimerModal;
 window.handleTimerAction = handleTimerAction;

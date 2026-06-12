@@ -1,3 +1,34 @@
+/**
+ * Глобальное состояние приложения (global state).
+ * Все данные приложения хранятся в этом单一 объекте:
+ *
+ *   boards            — объект { boardId: boardData } со всеми досками,
+ *   activeBoardId     — ID текущей активной доски (или null, если не выбрана),
+ *   commentOpenState  — Set с ID карточек, у которых раскрыта секция комментариев,
+ *   _newBoardMode     — режим модального окна создания доски ('create' | 'copy'),
+ *   _pendingDelBoard  — ID доски, которую пользователь подтвердил на удаление,
+ *   _newColScheme     — ID выбранной цветовой схемы для новой колонки,
+ *   _colPickerTarget  — цель выбора цвета: { type: 'col', colId } или null,
+ *   _cardPickerCardId — ID карточки для выбора цвета (или null),
+ *   dnd               — состояние перетаскивания карточек (drag & drop):
+ *     active    — идёт ли сейчас перетаскивание,
+ *     armed     — drag «заряжен» (кнопка нажата, но ещё не начато движение),
+ *     cardId    — ID перетаскиваемой карточки,
+ *     ghost     — DOM-элемент «призрака» (визуальная копия при drag),
+ *     ox, oy    — смещение курсора относительно левого верхнего угла карточки,
+ *     startX/Y  — начальная позиция курсора (для определения порога начала drag),
+ *     targetCol — ID колонки, куда перетаскивается карточка,
+ *     insertBefore — ID карточки, перед которой будет вставлена (или null — в конец),
+ *   bugReportText     — текущий текст баг-репорта,
+ *   bugReportUnsub    — функция отписки от Firebase-подписки баг-репорта,
+ *   localTimerSeconds — оставшееся время таймера в секундах,
+ *   timerRunning      — запущен ли таймер сейчас,
+ *   timerInterval     — ID интервала (setInterval) для локального отсчёта,
+ *   globalTimerUnsub  — функция отписки от Firebase-подписки таймера,
+ *   userVotes         — Set с ID карточек, за которые текущий пользователь проголосовал,
+ *   _pendingBoardRender — флаг: есть ли отложенная перерисовка доски ( во время drag),
+ *   _globalCardId     — счётчик для генерации уникальных ID карточек (инкрементируется).
+ */
 const state = {
   boards: {},
   activeBoardId: null,
@@ -7,7 +38,7 @@ const state = {
   _newColScheme: 0,
   _colPickerTarget: null,
   _cardPickerCardId: null,
-  dnd: { active: false, cardId: null, ghost: null, ox: 0, oy: 0, targetCol: null, insertBefore: null },
+  dnd: { active: false, armed: false, cardId: null, ghost: null, ox: 0, oy: 0, startX: 0, startY: 0, targetCol: null, insertBefore: null },
   bugReportText: '',
   bugReportUnsub: null,
   localTimerSeconds: 300,
@@ -19,20 +50,42 @@ const state = {
   _globalCardId: Date.now(),
 };
 
+/**
+ * Возвращает объект текущей (активной) доски или null, если доска не выбрана.
+ * Обращается к state.boards[state.activeBoardId].
+ */
 function curBoard() {
   return state.boards[state.activeBoardId] || null;
 }
 
+/**
+ * Генерирует короткий уникальный строковый ID на основе текущего времени
+ * и случайного числа. Используется для ID колонок, комментариев и досок.
+ * Формат: timestamp-base36 + 4 символа random-base36.
+ */
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
+/**
+ * Генерирует следующий глобально уникальный числовой ID для карточки.
+ * Использует счётчик state._globalCardId, который инициализируется
+ * текущим временем и инкрементируется при каждом вызове.
+ * Гарантирует уникальность ID карточек в пределах сессии.
+ */
 function nextGlobalCardId() {
   if (!state._globalCardId) state._globalCardId = Date.now();
   state._globalCardId += 1;
   return state._globalCardId;
 }
 
+/**
+ * Возвращает или создаёт уникальный ID клиента (пользователя).
+ * Сохраняется в localStorage под ключом 'rb.clientId', чтобы
+ * идентификатор сохранялся между сессиями.
+ * Используется для определения владельца карточек и комментариев.
+ * В случае ошибки localStorage возвращает 'unknown'.
+ */
 function getClientId() {
   try {
     const key = 'rb.clientId';
@@ -47,4 +100,8 @@ function getClientId() {
   }
 }
 
+/**
+ * Экспорт функции getClientId в глобальную область window,
+ * чтобы она была доступна из HTML-атрибутов (onclick и т.п.).
+ */
 window.getClientId = getClientId;

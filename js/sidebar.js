@@ -1,4 +1,10 @@
-
+/**
+ * Рендерит список досок в боковой панели (sidebar).
+ * Сортирует доски по дате создания (новые сверху).
+ * Для каждой доски создаёт элемент с названием, точкой-индикатором
+ * и кнопкой удаления. Подсвечивает активную доску классом 'active'.
+ * Если досок нет — показывает подсказку «Нет досок».
+ */
 function renderSidebar() {
   const container = document.getElementById('sbBoards');
   const list = Object.values(state.boards).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -19,6 +25,13 @@ function renderSidebar() {
     </div>`).join('');
 }
 
+/**
+ * Выбирает доску по ID и отображает её.
+ * Устанавливает state.activeBoardId, заполняет поле ввода названия в topbar,
+ * скрывает пустое состояние, показывает boardInner и кнопку копирования.
+ * Перерисовывает сайдбар и доску.
+ * @param {string} id — ID доски для выбора
+ */
 function selectBoard(id) {
   if (!state.boards[id]) return;
   state.activeBoardId = id;
@@ -34,6 +47,12 @@ function selectBoard(id) {
   renderBoard();
 }
 
+/**
+ * Переименовывает текущую активную доску.
+ * Обновляет поле board.name, сохраняет в Firebase и localStorage,
+ * перерисовывает сайдбар. Вызывается из onblur/topbar input.
+ * @param {string} value — новое название доски
+ */
 function renameCurBoard(value) {
   const board = curBoard();
   if (!board) return;
@@ -43,6 +62,11 @@ function renameCurBoard(value) {
   renderSidebar();
 }
 
+/**
+ * Показывает пустое состояние (когда доска не выбрана).
+ * Скрывает boardInner и кнопку копирования, показывает emptyState.
+ * Устанавливает titleInput в readonly со значением «Выберите доску».
+ */
 function showEmpty() {
   document.getElementById('emptyState').style.display = '';
   document.getElementById('boardInner').style.display = 'none';
@@ -55,6 +79,12 @@ function showEmpty() {
   renderSidebar();
 }
 
+/**
+ * Переключает видимость боковой панели (свёрнута/развёрнута).
+ * Добавляет/убирает CSS-класс 'collapsed', сохраняет состояние
+ * в localStorage под ключом 'rb_sidebar_collapsed'. Обновляет
+ * иконку и текст кнопки-переключателя.
+ */
 function toggleSidebar() {
   const sidebar = document.querySelector('.sidebar');
   if (!sidebar) return;
@@ -63,6 +93,11 @@ function toggleSidebar() {
   updateSidebarToggleButton(collapsed);
 }
 
+/**
+ * Обновляет кнопку-переключатель боковой панели в зависимости от состояния.
+ * Меняет title, текст и направление стрелки SVG-иконки.
+ * @param {boolean} collapsed — свёрнута ли панель
+ */
 function updateSidebarToggleButton(collapsed) {
   const btn = document.getElementById('sidebarToggleBtn');
   if (!btn) return;
@@ -71,6 +106,11 @@ function updateSidebarToggleButton(collapsed) {
   btn.querySelector('svg path').setAttribute('d', collapsed ? 'M8 6l6 6-6 6' : 'M16 6l-6 6 6 6');
 }
 
+/**
+ * Восстанавливает состояние свёрнутости боковой панели из localStorage.
+ * Вызывается при старте приложения. Если сохранено '1' — добавляет
+ * класс 'collapsed'. Обновляет кнопку-переключатель.
+ */
 function initSidebarState() {
   const sidebar = document.querySelector('.sidebar');
   if (!sidebar) return;
@@ -80,6 +120,9 @@ function initSidebarState() {
   updateSidebarToggleButton(collapsed);
 }
 
+/**
+ * Экспорт функций сайдбара в глобальную область window.
+ */
 window.selectBoard = selectBoard;
 window.toggleSidebar = toggleSidebar;
 window.renameCurBoard = renameCurBoard;
