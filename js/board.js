@@ -1,27 +1,70 @@
-
+/**
+ * Возвращает объект цветовой схемы по её ID.
+ * Если схема не найдена — возвращает дефолтную (индекс 0, зелёная).
+ * @param {number} schemeId — индекс схемы в массиве COL_SCHEMES
+ * @returns {Object} — объект схемы { bg, text, dot, tag, tt, ... }
+ */
 function getScheme(schemeId) {
   return COL_SCHEMES[schemeId] || COL_SCHEMES[0];
 }
 
+/**
+ * Возвращает CSS-строку стиля фона заголовка колонки.
+ * @param {number} s — ID цветовой схемы
+ * @returns {string} — CSS-строка, например "background:#EAF3DE"
+ */
 function schemeHeadStyle(s) {
   return `background:${getScheme(s).bg}`;
 }
 
+/**
+ * Возвращает CSS-строку стиля точки-индикатора в заголовке колонки.
+ * @param {number} s — ID цветовой схемы
+ * @returns {string} — CSS-строка, например "background:#639922"
+ */
 function schemeDotStyle(s) {
   return `background:${getScheme(s).dot}`;
 }
 
+/**
+ * Возвращает CSS-строку стиля текста заголовка колонки.
+ * @param {number} s — ID цветовой схемы
+ * @returns {string} — CSS-строка, например "color:#3B6D11"
+ */
 function schemeLabelStyle(s) {
   return `color:${getScheme(s).text}`;
 }
 
+/**
+ * Возвращает CSS-строку стиля бейджа-счётчика карточек в заголовке колонки.
+ * @param {number} s — ID цветовой схемы
+ * @returns {string} — CSS-строка с background и color
+ */
 function schemeBadgeStyle(s) {
   const sc = getScheme(s);
   return `background:${sc.tag};color:${sc.tt}`;
 }
 
+/**
+ * Последний ID доски, которая была отрисована.
+ * Используется для оптимизации: если доска не изменилась,
+ * input-состояние восстанавливается без полной перерисовки.
+ */
 let lastRenderedBoardId = null;
 
+/**
+ * Генерирует HTML-разметку одной карточки.
+ * Включает:
+ *   - Текст карточки (с linkify для кликабельных ссылок),
+ *   - Кнопку голосования (vote-btn) с счётчиком,
+ *   - Кнопку комментариев (comment-btn) с количеством,
+ *   - Кнопку выбора цвета (card-color-btn),
+ *   - Кнопки редактирования и удаления (только для владельца),
+ *   - Секцию комментариев (список + форма добавления).
+ * Если карточка имеет свой цвет — добавляются CSS-переменные через inline-стили.
+ * @param {Object} card — объект карточки { id, text, votes, color, comments, ownerId, ... }
+ * @returns {string} — HTML-разметка карточки
+ */
 function cardHTML(card) {
   const contrastText = card.color ? getContrastColor(card.color) : null;
   const btnBg = contrastText === '#fff' ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.7)';
@@ -33,10 +76,10 @@ function cardHTML(card) {
   const voteLabel = card.votes > 0 ? `${card.votes}` : '';
   const userVoted = state.userVotes.has(card.id);
   const isOwner = card.ownerId && (card.ownerId === getClientId());
-  // card body: always display text (editing happens in modal)
+  // Текст карточки: всегда отображается (редактирование через модальное окно)
   const textHtml = `<div class="card-text">${linkify(card.text)}</div>`;
 
-  // footer buttons
+  // Кнопки подвала
   let footerBtns = `
       <button class="vote-btn ${userVoted ? 'voted' : ''}" onclick="vote(${card.id})">` +
         `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
@@ -88,6 +131,14 @@ function cardHTML(card) {
   </div>`;
 }
 
+/**
+ * Вычисляет контрастный цвет текста для заданного фона карточки.
+ * Парсит HEX или RGB формат цвета, вычисляет luminance по формуле WCAG.
+ * Если luminance > 0.65 (светлый фон) — возвращает тёмный текст (#1A1916),
+ * иначе — белый (#fff).
+ * @param {string} color — HEX-код (#RRGGBB) или rgb() строка
+ * @returns {string} — '#1A1916' или '#fff'
+ */
 function getContrastColor(color) {
   if (!color) return '#1A1916';
   let r, g, b;
@@ -110,12 +161,25 @@ function getContrastColor(color) {
   return luminance > 0.65 ? '#1A1916' : '#fff';
 }
 
+/**
+ * Создаёт DOM-элемент карточки из HTML-строки.
+ * Оборачивает cardHTML() в div, возвращает первый дочерний элемент.
+ * @param {Object} card — объект карточки
+ * @returns {HTMLElement} — DOM-элемент .card
+ */
 function createCardElement(card) {
   const wrapper = document.createElement('div');
   wrapper.innerHTML = cardHTML(card);
   return wrapper.firstElementChild;
 }
 
+/**
+ * Гарантирует наличие контейнера .cards-list внутри colBody.
+ * Если его нет — создаёт, переносит в него существующие дочерние элементы
+ * (кроме .add-wrap). Возвращает контейнер.
+ * @param {HTMLElement} colBody — DOM-элемент .col-body колонки
+ * @returns {HTMLElement} — контейнер .cards-list
+ */
 function ensureCardsContainer(colBody) {
   let cardsContainer = colBody.querySelector('.cards-list');
   if (!cardsContainer) {
@@ -128,6 +192,13 @@ function ensureCardsContainer(colBody) {
   return cardsContainer;
 }
 
+/**
+ * Захватывает текущее состояние всех input/textarea на доске.
+ * Сохраняет: ID активного элемента, позицию курсора (selectionStart/End),
+ * значения всех полей ввода, список открытых форм добавления карточек.
+ * Используется для восстановления после renderBoard().
+ * @returns {Object} — объект с сохранённым состоянием
+ */
 function captureBoardInputState() {
   const result = { activeElementId: null, selectionStart: null, selectionEnd: null, values: {}, openAddForms: [] };
   const inner = document.getElementById('boardInner');
@@ -155,6 +226,12 @@ function captureBoardInputState() {
   return result;
 }
 
+/**
+ * Восстанавливает состояние input/textarea после renderBoard().
+ * Восстанавливает: значения полей, открытые формы добавления,
+ * фокус и позицию курсора. Вызывается с результатом captureBoardInputState().
+ * @param {Object} saved — объект сохранённого состояния
+ */
 function restoreBoardInputState(saved) {
   if (!saved) return;
   const inner = document.getElementById('boardInner');
@@ -189,6 +266,11 @@ function restoreBoardInputState(saved) {
   }
 }
 
+/**
+ * Обновляет CSS-переменные карточки (цвет фона, текста, кнопок).
+ * @param {HTMLElement} cardEl — DOM-элемент карточки
+ * @param {Object}      card  — объект карточки
+ */
 function applyCardStyles(cardEl, card) {
   const contrastText = card.color ? getContrastColor(card.color) : null;
   const btnBg = contrastText === '#fff' ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.7)';
@@ -199,6 +281,16 @@ function applyCardStyles(cardEl, card) {
   }
 }
 
+/**
+ * Рендерит список комментариев карточки в HTML.
+ * Для каждого комментария:
+ *   - Если находится в режиме редактирования — показывает textarea с кнопками.
+ *   - Иначе — показывает текст и (для владельца) кнопки редактирования/удаления.
+ * Если комментариев нет — показывает «Нет комментариев».
+ * @param {Array}  comments — массив объектов комментариев
+ * @param {number} cardId   — ID карточки (для определения владельца)
+ * @returns {string} — HTML-строка списка комментариев
+ */
 function renderCommentItems(comments, cardId) {
   if (!comments || comments.length === 0) return '<div class="comment-empty">Нет комментариев</div>';
   return comments.map(comment => {
@@ -233,6 +325,14 @@ function renderCommentItems(comments, cardId) {
   }).join('');
 }
 
+/**
+ * Обновляет существующий DOM-элемент карточки вместо пересоздания.
+ * Обновляет: стили цвета, текст, кнопку голосования, кнопку комментариев,
+ * секцию комментариев, подвал карточки (кнопки edit/delete для владельца).
+ * Используется для инкрементального обновления (без полной перерисовки DOM).
+ * @param {HTMLElement} cardEl — существующий DOM-элемент .card
+ * @param {Object}      card  — объект карточки с актуальными данными
+ */
 function updateCardElement(cardEl, card) {
   applyCardStyles(cardEl, card);
 
@@ -272,7 +372,7 @@ function updateCardElement(cardEl, card) {
     }
   }
 
-  // Rebuild footer to ensure edit/delete buttons reflect ownership
+  // Пересоздаёт подвал для актуализации кнопок edit/delete
   const cardFooter = cardEl.querySelector('.card-footer');
   if (cardFooter) {
     const voteLabel = card.votes > 0 ? `${card.votes}` : '';
@@ -313,6 +413,17 @@ function updateCardElement(cardEl, card) {
   }
 }
 
+/**
+ * Приводит DOM-контейнер карточек колонки к желаемому состоянию (reconcile).
+ * Сравнивает текущие DOM-элементы с массивом cards:
+ *   - Создаёт новые элементы для карточек, которых нет в DOM.
+ *   - Обновляет существующие через updateCardElement().
+ *   - Переставляет элементы для правильного порядка.
+ *   - Удаляет элементы карточек, которых больше нет в данных.
+ *   - Показывает/скрывает подсказку «Перетащите сюда карточку».
+ * @param {HTMLElement} cardsContainer — DOM-контейнер .cards-list
+ * @param {Array}       cards          — массив объектов карточек колонки
+ */
 function reconcileColumnCards(cardsContainer, cards) {
   const desiredIds = new Set(cards.map(card => String(card.id)));
   const existingCards = Array.from(cardsContainer.children).filter(child => child.classList.contains('card'));
@@ -358,12 +469,26 @@ function reconcileColumnCards(cardsContainer, cards) {
   }
 }
 
+/**
+ * Автоматически подстраивает высоту textarea-ввода названия колонки
+ * под содержимое (autosize). Устанавливает height: auto, затем
+ * устанавливает scrollHeight.
+ * @param {HTMLTextAreaElement} labelInput — textarea заголовка колонки
+ */
 function autosizeColumnLabel(labelInput) {
   if (!labelInput) return;
   labelInput.style.height = 'auto';
   labelInput.style.height = (labelInput.scrollHeight) + 'px';
 }
 
+/**
+ * Создаёт DOM-элемент колонки с заголовком, телом (карточки + форма добавления).
+ * Содержит: точку-индикатор цвета, textarea для названия, бейдж-счётчик,
+ * кнопку удаления, кнопку «Добавить карточку», контейнер карточек.
+ * @param {Object} col   — объект колонки { id, label, s }
+ * @param {Array}  cards — массив карточек колонки
+ * @returns {HTMLElement} — DOM-элемент .column
+ */
 function createColumnElement(col, cards) {
   const wrap = document.createElement('div');
   wrap.className = 'column';
@@ -404,6 +529,14 @@ function createColumnElement(col, cards) {
   return wrap;
 }
 
+/**
+ * Обновляет существующий DOM-элемент колонки.
+ * Обновляет: стили заголовка (фон, точка, текст), бейдж-счётчик,
+ * а также выполняет reconcile карточек внутри колонки.
+ * @param {HTMLElement} colEl — существующий DOM-элемент .column
+ * @param {Object}      col   — объект колонки
+ * @param {Array}       cards — массив карточек
+ */
 function updateColumnElement(colEl, col, cards) {
   const head = colEl.querySelector('.col-head');
   if (head) head.style.cssText = schemeHeadStyle(col.s);
@@ -434,6 +567,19 @@ function updateColumnElement(colEl, col, cards) {
   reconcileColumnCards(cardsContainer, cards);
 }
 
+/**
+ * Главная функция рендеринга доски.
+ * Определяет все колонки текущей доски и выполняет reconcile:
+ *   - Создаёт новые DOM-элементы колонок, которых нет на странице.
+ *   - Обновляет существующие через updateColumnElement().
+ *   - Переставляет колонки для правильного порядка.
+ *   - Удаляет колонки, которых больше нет в данных.
+ *   - Добавляет кнопку «Добавить колонку» в конец.
+ * Сохраняет и восстанавливает состояние input'ов (если preserveInputState = true).
+ * Если drag активен — ставит флаг _pendingBoardRender и выходит (отложенная перерисовка).
+ * @param {Object} options
+ * @param {boolean} options.preserveInputState — сохранять ли состояние input'ов (по умолчанию true)
+ */
 function renderBoard({ preserveInputState = true } = {}) {
   const shouldRestoreInput = preserveInputState && state.activeBoardId === lastRenderedBoardId;
   const inputState = shouldRestoreInput ? captureBoardInputState() : null;
@@ -502,6 +648,12 @@ function renderBoard({ preserveInputState = true } = {}) {
   lastRenderedBoardId = state.activeBoardId;
 }
 
+/**
+ * Проверяет, что узел является дочерним элементом заданного родителя.
+ * @param {HTMLElement} node   — проверяемый узел
+ * @param {HTMLElement} parent — предполагаемый родитель
+ * @returns {boolean} — true если node.parentElement === parent
+ */
 function referenceNodeIsInParent(node, parent) {
   return node && node.parentElement === parent;
 }

@@ -1,4 +1,9 @@
-
+/**
+ * Открывает модальное окно создания новой колонки.
+ * Сбрасывает выбранную цветовую схему на 0 (зелёную),
+ * очищает поле ввода названия, рендерит сетку выбора цвета,
+ * показывает оверлей и фокусирует поле ввода.
+ */
 function openAddCol() {
   state._newColScheme = 0;
   document.getElementById('newColName').value = '';
@@ -7,6 +12,11 @@ function openAddCol() {
   setTimeout(() => document.getElementById('newColName').focus(), 60);
 }
 
+/**
+ * Рендерит сетку выбора цветовой схемы для заголовка колонки.
+ * Создаёт HTML из массива COL_SCHEMES, подсвечивает текущий выбранный вариант.
+ * Каждый элемент при клике вызывает selectScheme(id).
+ */
 function renderSchemeGrid() {
   const schemeGrid = document.getElementById('schemeGrid');
   if (!schemeGrid) return;
@@ -18,11 +28,24 @@ function renderSchemeGrid() {
     </div>`).join('');
 }
 
+/**
+ * Устанавливает выбранную цветовую схему для новой колонки.
+ * Обновляет state._newColScheme и перерисовывает сетку.
+ * @param {number} id — ID схемы из COL_SCHEMES
+ */
 function selectScheme(id) {
   state._newColScheme = id;
   renderSchemeGrid();
 }
 
+/**
+ * Создаёт новую колонку в текущей доске.
+ * Читает название из input (или «Новая колонка» по умолчанию),
+ * генерирует уникальный ID, добавляет колонку в board.cols,
+ * создаёт пустой массив карточек в board.cards.
+ * Сохраняет в Firebase и localStorage, закрывает модалку,
+ * перерисовывает доску и фокусирует поле ввода названия новой колонки.
+ */
 function confirmNewCol() {
   const board = curBoard();
   if (!board) return;
@@ -43,6 +66,14 @@ function confirmNewCol() {
   }, 40);
 }
 
+/**
+ * Переименовывает колонку.
+ * Находит колонку по ID в текущей доске, обновляет label (trim + fallback).
+ * Сохраняет в Firebase и localStorage. Вызывается из onblur/onchange
+ * textarea в заголовке колонки.
+ * @param {string} colId — ID колонки
+ * @param {string} value — новое название
+ */
 function renameCol(colId, value) {
   const board = curBoard();
   if (!board) return;
@@ -53,6 +84,13 @@ function renameCol(colId, value) {
   lsSave();
 }
 
+/**
+ * Открывает палитру выбора цвета для заголовка колонки.
+ * Сохраняет цель выбора в state._colPickerTarget, формирует HTML палитры
+ * из COL_SCHEMES. Подсвечивает текущий цвет. Позиционирует палитру.
+ * @param {MouseEvent} event — событие клика
+ * @param {string} colId     — ID колонки
+ */
 function openColSchemePopup(event, colId) {
   event.stopPropagation();
   state._colPickerTarget = { type: 'col', colId };
@@ -69,6 +107,13 @@ function openColSchemePopup(event, colId) {
   positionPopup(event);
 }
 
+/**
+ * Применяет выбранную цветовую схему к заголовку колонки.
+ * Обновляет поле column.s, сохраняет в Firebase и localStorage,
+ * закрывает палитру и перерисовывает доску.
+ * @param {string} colId    — ID колонки
+ * @param {number} schemeId — ID цветовой схемы из COL_SCHEMES
+ */
 function applyColScheme(colId, schemeId) {
   const board = curBoard();
   if (!board) return;
@@ -81,6 +126,12 @@ function applyColScheme(colId, schemeId) {
   renderBoard();
 }
 
+/**
+ * Открывает модальное окно подтверждения удаления колонки.
+ * Показывает название колонки и количество карточек в ней.
+ * Привязывает обработчик кнопки «Удалить» к doDelCol.
+ * @param {string} colId — ID колонки для удаления
+ */
 function confirmDelCol(colId) {
   state._pendingDelCol = colId;
   const board = curBoard();
@@ -94,6 +145,11 @@ function confirmDelCol(colId) {
   document.getElementById('delColOverlay').classList.add('open');
 }
 
+/**
+ * Выполняет удаление колонки после подтверждения.
+ * Удаляет колонку из board.cols и её карточки из board.cards.
+ * Сохраняет изменения и перерисовывает доску.
+ */
 function doDelCol() {
   const board = curBoard();
   if (!board || !state._pendingDelCol) return;
@@ -107,10 +163,17 @@ function doDelCol() {
   showToast('Колонка удалена');
 }
 
+/**
+ * Закрывает оверлей по его ID (дубликат для изоляции модуля).
+ * @param {string} id — ID HTML-элемента оверлея
+ */
 function closeOverlay(id) {
   document.getElementById(id)?.classList.remove('open');
 }
 
+/**
+ * Экспорт функций колонок в глобальную область window.
+ */
 window.openAddCol = openAddCol;
 window.selectScheme = selectScheme;
 window.confirmNewCol = confirmNewCol;

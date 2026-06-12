@@ -1,4 +1,9 @@
-
+/**
+ * Экранирует спецсимволы HTML в строке (дубликат esc() из ui.js).
+ * Используется при выводе названий досок в селекте выбора шаблона.
+ * @param {string} text — исходный текст
+ * @returns {string} — экранированная строка
+ */
 function escapeHtml(text) {
   return String(text || '')
     .replace(/&/g, '&amp;')
@@ -7,6 +12,12 @@ function escapeHtml(text) {
     .replace(/"/g, '&quot;');
 }
 
+/**
+ * Заполняет выпадающий список (select) опциями досок для копирования колонок.
+ * Сортирует доски по дате создания (новые сверху).
+ * Первая опция — «Не заполнять» (без копирования).
+ * @param {string} selectedId — ID предварительно выбранной доски (по умолчанию '')
+ */
 function fillNewBoardCopySourceOptions(selectedId = '') {
   const select = document.getElementById('newBoardCopySource');
   if (!select) return;
@@ -20,6 +31,12 @@ function fillNewBoardCopySourceOptions(selectedId = '') {
   select.value = selectedId || '';
 }
 
+/**
+ * Открывает модальное окно создания новой доски.
+ * Устанавливает заголовок «Новая доска», подсказку, текст кнопки «Создать».
+ * Очищает поле ввода названия, показывает строку выбора шаблона (copy source).
+ * Заполняет select досками для копирования. Фокусирует поле ввода.
+ */
 function openNewBoardModal() {
   state._newBoardMode = 'create';
   document.getElementById('newBoardModalTitle').textContent = 'Новая доска';
@@ -33,6 +50,12 @@ function openNewBoardModal() {
   setTimeout(() => document.getElementById('newBoardName').focus(), 60);
 }
 
+/**
+ * Открывает модальное окно копирования текущей доски.
+ * Устанавливает заголовок «Копировать доску», текст кнопки «Копировать».
+ * Предзаполняет название: «имя (копия)». Скрывает строку выбора шаблона
+ * (копируется текущая доска). Фокусирует и выделяет поле ввода.
+ */
 function copyBoard() {
   const board = curBoard();
   if (!board) return;
@@ -51,6 +74,12 @@ function copyBoard() {
   }, 60);
 }
 
+/**
+ * Обрабатывает нажатие кнопки «Создать» / «Копировать» в модальном окне.
+ * Читает название из input (или «Новая доска» по умолчанию).
+ * В зависимости от режима (_newBoardMode) вызывает doCopyBoard или doCreateBoard.
+ * Закрывает модальное окно.
+ */
 function confirmNewBoard() {
   const name = document.getElementById('newBoardName').value.trim() || 'Новая доска';
   if (state._newBoardMode === 'copy') {
@@ -62,6 +91,15 @@ function confirmNewBoard() {
   closeOverlay('newBoardOverlay');
 }
 
+/**
+ * Переназначает все ID колонок и карточек в доске на новые уникальные значения.
+ * Создаёт маппинг colIdMap { старый_ID: новый_ID }, затем обновляет:
+ *   - board.cols (каждая колонка получает новый id),
+ *   - board.cards (ключи — новые ID колонок, карточки — с новыми id).
+ * Используется при создании новой доски и копировании, чтобы избежать
+ * конфликтов ID.
+ * @param {Object} board — объект доски (модифицируется на месте)
+ */
 function remapBoardIds(board) {
   const colIdMap = {};
   board.cols = board.cols.map(col => {
@@ -84,6 +122,14 @@ function remapBoardIds(board) {
   board._nextId = Math.max(board._nextId || 0, maxCardId);
 }
 
+/**
+ * Создаёт новую доску с дефолтными колонками.
+ * Если указан sourceBoardId — копирует карточки из последней колонки
+ * исходной доски в первую колонку новой (с переназначением ID и сбросом голосов).
+ * Сохраняет в Firebase и localStorage, обновляет сайдбар, выбирает новую доску.
+ * @param {string}      name          — название новой доски
+ * @param {string|null} sourceBoardId — ID доски-источника для копирования карточек (или null)
+ */
 function doCreateBoard(name, sourceBoardId = null) {
   const id = 'b_' + uid();
   const board = {
@@ -136,6 +182,13 @@ function doCreateBoard(name, sourceBoardId = null) {
   showToast('Доска «' + name + '» создана');
 }
 
+/**
+ * Копирует текущую доску с новым именем.
+ * Создаёт глубокую копию текущей доски через JSON-сериализацию,
+ * переназначает все ID (колонки + карточки), сбрасывает голоса (voted).
+ * Сохраняет в Firebase и localStorage, выбирает новую доску.
+ * @param {string} name — название для копии доски
+ */
 function doCopyBoard(name) {
   const source = curBoard();
   if (!source) return;
@@ -154,6 +207,12 @@ function doCopyBoard(name) {
   showToast('Доска скопирована');
 }
 
+/**
+ * Открывает модальное окно подтверждения удаления доски.
+ * Показывает название доски и предупреждение о необратимости.
+ * Привязывает обработчик кнопки «Удалить» к doDelBoard.
+ * @param {string} id — ID доски для удаления
+ */
 function confirmDelBoard(id) {
   state._pendingDelBoard = id;
   const board = state.boards[id];
@@ -163,6 +222,12 @@ function confirmDelBoard(id) {
   document.getElementById('delBoardOverlay').classList.add('open');
 }
 
+/**
+ * Выполняет удаление доски после подтверждения.
+ * Удаляет из Firebase и state.boards. Если удалена активная доска —
+ * сбрасывает activeBoardId и показывает пустое состояние.
+ * Обновляет сайдбар и показывает toast.
+ */
 function doDelBoard() {
   if (!state._pendingDelBoard) return;
   fbDel(state._pendingDelBoard);
@@ -178,10 +243,17 @@ function doDelBoard() {
   showToast('Доска удалена');
 }
 
+/**
+ * Закрывает оверлей по его ID (дубликат для изоляции модуля).
+ * @param {string} id — ID HTML-элемента оверлея
+ */
 function closeOverlay(id) {
   document.getElementById(id)?.classList.remove('open');
 }
 
+/**
+ * Экспорт функций досок в глобальную область window.
+ */
 window.openNewBoardModal = openNewBoardModal;
 window.copyBoard = copyBoard;
 window.confirmNewBoard = confirmNewBoard;
