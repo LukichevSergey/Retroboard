@@ -166,7 +166,9 @@ function toggleReaction(cardId, emoji) {
  */
 function openEmojiPicker(event, cardId) {
   event.stopPropagation();
-  closeEmojiPicker();
+
+  const existing = document.getElementById('emojiPicker');
+  if (existing) { closeEmojiPicker(); return; }
 
   const picker = document.createElement('div');
   picker.className = 'emoji-picker';

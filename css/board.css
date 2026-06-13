@@ -91,10 +91,10 @@
 .card-footer { display: flex; align-items: center; gap: 5px; }
 
 .comment-btn {
-  font-family: 'DM Sans', sans-serif; background: transparent; border: 1px solid var(--action-btn-border, rgba(60, 60, 60, .12)); border-radius: 99px; padding: 2px 9px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; color: var(--action-btn-fg, rgba(60, 60, 60, .72)); transition: all .12s;
+  font-family: 'DM Sans', sans-serif; background: transparent; border: none; border-radius: 99px; padding: 2px 4px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 3px; color: var(--action-btn-fg, rgba(60, 60, 60, .72)); transition: all .12s;
 }
-.comment-btn:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
-.comment-btn.active { background: transparent; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.comment-btn:hover { color: var(--accent); background: transparent; }
+.comment-btn.active { background: transparent; color: var(--accent); font-weight: 600; }
 
 .comment-btn svg { width: 12px; height: 12px; display: block; }
 .comment-btn svg path, .comment-btn svg circle, .comment-btn svg polyline { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -104,21 +104,21 @@
 
 .reaction-pill {
   font-family: 'DM Sans', sans-serif; font-size: 12px; display: inline-flex; align-items: center; gap: 3px;
-  padding: 2px 6px; border-radius: 99px; border: 1px solid var(--border2); background: var(--surface);
+  padding: 2px 4px; border-radius: 99px; border: none; background: none;
   cursor: pointer; transition: all .12s; line-height: 1.3;
 }
-.reaction-pill:hover { border-color: var(--accent); background: var(--accent-bg); }
-.reaction-pill.reacted { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+.reaction-pill:hover { background: transparent; }
+.reaction-pill.reacted .reaction-count { color: var(--accent); font-weight: 700; }
 .reaction-emoji { font-size: 13px; line-height: 1; }
 .reaction-count { font-size: 11px; font-weight: 600; }
 
 .reaction-trigger-btn {
-  font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 2px 6px; border-radius: 99px;
-  border: 1px solid var(--border2); background: transparent; color: var(--hint); cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 2px 4px; border-radius: 99px;
+  border: none; background: transparent; color: var(--hint); cursor: pointer;
   display: flex; align-items: center; gap: 2px; transition: all .12s; opacity: 0;
 }
 .card:hover .reaction-trigger-btn { opacity: 1; }
-.reaction-trigger-btn:hover { border-color: var(--accent); color: var(--accent); }
+.reaction-trigger-btn:hover { color: var(--accent); }
 
 /* Emoji Picker */
 .emoji-picker {
@@ -134,7 +134,7 @@
 .emoji-picker-btn:hover { background: var(--accent-bg); }
 .emoji-picker-btn.picked { background: var(--accent-bg); outline: 2px solid var(--accent); }
 
-.comment-count { font-size: 11px; font-weight: 700; line-height: 1; min-width: 18px; text-align: center; padding: 2px 6px; border-radius: 999px; background: transparent; color: var(--action-btn-fg, rgba(60, 60, 60, .72)); }
+.comment-count { font-size: 11px; font-weight: 700; line-height: 1; text-align: center; background: transparent; color: var(--action-btn-fg, rgba(60, 60, 60, .72)); }
 .comment-btn.active .comment-count { color: var(--accent); }
 
 .card-spacer { flex: 1; }
@@ -159,18 +159,18 @@
 
 .card-color-btn { width: 22px; height: 22px; border-radius: 5px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--hint); opacity: 0; transition: all .15s; }
 .card:hover .card-color-btn { opacity: 1; }
-.card-color-btn:hover { background: var(--surface2); color: var(--text); }
+.card-color-btn:hover { background: transparent; color: var(--text); }
 .card-color-btn svg { width: 12px; height: 12px; }
 
 .card-del-btn { width: 22px; height: 22px; border-radius: 5px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--hint); opacity: 0; transition: all .15s; }
 .card:hover .card-del-btn { opacity: 1; }
-.card-del-btn:hover { background: #FCEBEB; color: #E24B4A; }
+.card-del-btn:hover { background: transparent; color: #E24B4A; }
 .card-del-btn svg { width: 12px; height: 12px; }
 
 /* edit button looks like delete but subtle */
 .card-edit-btn { width: 22px; height: 22px; border-radius: 5px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--hint); opacity: 0; transition: all .15s; }
 .card:hover .card-edit-btn { opacity: 1; }
-.card-edit-btn:hover { background: var(--surface2); color: var(--text); }
+.card-edit-btn:hover { background: transparent; color: var(--text); }
 .card-edit-btn svg { width: 12px; height: 12px; }
 
 /* small action buttons for comments */
