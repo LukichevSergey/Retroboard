@@ -70,8 +70,7 @@ function addCard(colId) {
   const input = document.getElementById('atx-' + colId);
   const text = input?.value.trim();
   if (!text) return;
-  const newId = nextGlobalCardId();
-  board._nextId = Math.max(board._nextId || 0, newId);
+  const newId = uid();
 
   const card = {
     id: newId,
@@ -178,7 +177,7 @@ function openEmojiPicker(event, cardId) {
 
   picker.innerHTML = EMOJI_SET.map(item => {
     const picked = userSet.has(item.emoji) ? ' picked' : '';
-    return `<button class="emoji-picker-btn${picked}" title="${item.label}" onclick="addReactionFromPicker(${cardId},'${item.emoji}')">${item.emoji}</button>`;
+    return `<button class="emoji-picker-btn${picked}" title="${item.label}" onclick="addReactionFromPicker('${cardId}','${item.emoji}')">${item.emoji}</button>`;
   }).join('');
 
   const btn = event.currentTarget;
@@ -230,20 +229,25 @@ function addReactionFromPicker(cardId, emoji) {
  */
 function openCardColorPopup(event, cardId) {
   event.stopPropagation();
+  const popup = document.getElementById('colorPopup');
+  if (popup?.classList.contains('open') && state._cardPickerCardId === cardId) {
+    closeColorPopup();
+    return;
+  }
   state._cardPickerCardId = cardId;
   const card = state.cards[cardId];
   const currentColor = card?.color || null;
   document.getElementById('colorPopupTitle').textContent = 'Цвет карточки';
   const swatches = document.getElementById('colorSwatches');
   swatches.innerHTML = `
-    <div class="swatch none-swatch ${currentColor === null ? 'active' : ''}" title="По умолчанию" onclick="applyCardColor(${cardId},null)">
+    <div class="swatch none-swatch ${currentColor === null ? 'active' : ''}" title="По умолчанию" onclick="applyCardColor('${cardId}',null)">
       <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </div>` +
     CARD_COLORS.map(color => `
       <div class="swatch ${currentColor === color.hex ? 'active' : ''}"
            style="background:${color.hex}; border:1.5px solid rgba(0,0,0,.12);"
            title="${color.label}"
-           onclick="applyCardColor(${cardId},'${color.hex}')">
+           onclick="applyCardColor('${cardId}','${color.hex}')">
       </div>`).join('');
   positionPopup(event);
 }
@@ -637,7 +641,7 @@ function onDragUp() {
 
 document.addEventListener('mousedown', event => {
   const popup = document.getElementById('colorPopup');
-  if (popup?.classList.contains('open') && !popup.contains(event.target)) {
+  if (popup?.classList.contains('open') && !popup.contains(event.target) && !event.target.closest('.card-color-btn')) {
     closeColorPopup();
   }
 });

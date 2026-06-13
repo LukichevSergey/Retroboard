@@ -148,7 +148,7 @@ async function doCreateBoard(name, sourceBoardId = null) {
       const targetColId = board.cols?.[0]?.id;
       if (targetColId && sourceCards.length) {
         sourceCards.forEach(sourceCard => {
-          const newId = nextGlobalCardId();
+          const newId = uid();
           cardsToSave.push({
             id: newId,
             text: sourceCard.text,
@@ -195,7 +195,7 @@ async function doCopyBoard(name) {
   const sourceCards = Object.values(state.cards);
   const cardsToSave = [];
   sourceCards.forEach(sourceCard => {
-    const newId = nextGlobalCardId();
+    const newId = uid();
     const newColId = colIdMap[sourceCard.columnId] || sourceCard.columnId;
     cardsToSave.push({
       ...sourceCard,
