@@ -9,15 +9,35 @@ function colOfCard(cardId) {
   return card.columnId || null;
 }
 
+function needsReindex(colId) {
+  const cards = getCardsForColumn(colId);
+  for (let i = 1; i < cards.length; i++) {
+    const gap = (cards[i].position || 0) - (cards[i - 1].position || 0);
+    if (gap < 2) return true;
+  }
+  return false;
+}
+
+function reindexColumn(colId) {
+  const board = curBoard();
+  if (!board) return;
+  const cards = getCardsForColumn(colId);
+  cards.forEach((card, i) => {
+    card.position = (i + 1) * 1000;
+    fbSaveCard(board.id, card);
+  });
+  lsSave();
+}
+
 /**
- * Возвращает массив карточек для указанной колонки, отсортированный по дате создания.
+ * Возвращает массив карточек для указанной колонки, отсортированный по позиции.
  * @param {string} colId — ID колонки
  * @returns {Array} — массив карточек
  */
 function getCardsForColumn(colId) {
   return Object.values(state.cards)
     .filter(card => card.columnId === colId)
-    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    .sort((a, b) => (a.position || 0) - (b.position || 0) || (a.createdAt || 0) - (b.createdAt || 0));
 }
 
 /**
@@ -72,6 +92,9 @@ function addCard(colId) {
   if (!text) return;
   const newId = uid();
 
+  const existing = getCardsForColumn(colId);
+  const lastPos = existing.length > 0 ? (existing[existing.length - 1].position || 0) : 0;
+
   const card = {
     id: newId,
     text,
@@ -81,6 +104,7 @@ function addCard(colId) {
     createdAt: Date.now(),
     modifiedAt: Date.now(),
     columnId: colId,
+    position: lastPos + 1000,
   };
 
   state.cards[newId] = card;
@@ -146,13 +170,14 @@ function toggleReaction(cardId, emoji) {
     reaction.count = reaction.users.length;
     userSet.delete(emoji);
     if (reaction.users.length === 0) delete card.reactions[emoji];
+    fbUpdateReaction(board.id, cardId, emoji, false, clientId);
   } else {
     reaction.users.push(clientId);
     reaction.count = reaction.users.length;
     userSet.add(emoji);
+    fbUpdateReaction(board.id, cardId, emoji, true, clientId);
   }
 
-  fbSaveCard(board.id, card);
   lsSave();
   lsSaveUserReactions();
   renderBoard();
@@ -294,7 +319,7 @@ function toggleComments(cardId) {
  */
 function saveCommentsCache() {
   if (state.activeBoardId) {
-    state.boardCommentsCache[state.activeBoardId] = { ...state.comments };
+    state.boardCommentsCache[state.activeBoardId] = JSON.parse(JSON.stringify(state.comments));
   }
 }
 
@@ -335,8 +360,6 @@ async function loadComments(cardId) {
     makeCommentsHandler(cardId),
     error => console.error('Comments subscription error:', error)
   );
-
-  if (alreadyCached) renderBoard();
 }
 
 /**
@@ -365,7 +388,7 @@ function saveComment(cardId) {
   state.comments[cardId].push(comment);
 
   card.commentCount = (card.commentCount || 0) + 1;
-  fbSaveCard(board.id, card);
+  fbUpdateCommentCount(board.id, cardId, 1);
 
   state.commentOpenState.add(cardId);
   input.value = '';
@@ -470,7 +493,7 @@ function delComment(cardId, commentId) {
   const card = state.cards[cardId];
   if (card) {
     card.commentCount = Math.max(0, (card.commentCount || 0) - 1);
-    fbSaveCard(board.id, card);
+    fbUpdateCommentCount(board.id, cardId, -1);
   }
 
   lsSave();
@@ -621,8 +644,36 @@ function onDragUp() {
     if (card) {
       const fromCol = card.columnId;
       card.columnId = state.dnd.targetCol;
+
+      const targetCards = getCardsForColumn(state.dnd.targetCol).filter(c => c.id !== card.id);
+      const insertIdx = state.dnd.insertBefore
+        ? targetCards.findIndex(c => c.id === state.dnd.insertBefore)
+        : targetCards.length;
+
+      let newPos;
+      if (targetCards.length === 0) {
+        newPos = 1000;
+      } else if (insertIdx <= 0) {
+        newPos = (targetCards[0].position || 0) - 1000;
+      } else if (insertIdx >= targetCards.length) {
+        newPos = (targetCards[targetCards.length - 1].position || 0) + 1000;
+      } else {
+        const prev = targetCards[insertIdx - 1].position || 0;
+        const next = targetCards[insertIdx].position || 0;
+        newPos = Math.floor((prev + next) / 2);
+      }
+      card.position = newPos;
+
       fbSaveCard(board.id, card);
       lsSave();
+
+      if (needsReindex(state.dnd.targetCol)) {
+        reindexColumn(state.dnd.targetCol);
+      }
+      if (fromCol !== state.dnd.targetCol && needsReindex(fromCol)) {
+        reindexColumn(fromCol);
+      }
+
       renderBoard();
       if (fromCol !== state.dnd.targetCol) showToast('Карточка перемещена');
     }

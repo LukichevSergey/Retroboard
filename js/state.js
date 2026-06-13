@@ -54,7 +54,6 @@ const state = {
   globalTimerUnsub: null,
   userReactions: {},
   _pendingBoardRender: false,
-  _globalCardId: Date.now(),
 };
 
 /**

@@ -1,3 +1,12 @@
+let _renderBoardRaf = null;
+function scheduleRenderBoard() {
+  if (_renderBoardRaf) return;
+  _renderBoardRaf = requestAnimationFrame(() => {
+    _renderBoardRaf = null;
+    renderBoard();
+  });
+}
+
 /**
  * Обрабатывает снапшот изменений коллекции досок из Firebase.
  * Перебирает изменения (added, modified, removed):
@@ -23,6 +32,13 @@ async function handleBoardSnapshot(snapshot) {
   renderSidebar();
 }
 
+function cleanEmptyReactions(card) {
+  if (!card || !card.reactions) return;
+  for (const [emoji, r] of Object.entries(card.reactions)) {
+    if (!r.users || r.users.length === 0) delete card.reactions[emoji];
+  }
+}
+
 /**
  * Обрабатывает снапшот изменений карточек активной доски.
  * Обновляет state.cards при добавлении/изменении/удалении карточек.
@@ -31,16 +47,30 @@ async function handleBoardSnapshot(snapshot) {
 function handleCardsSnapshot(snapshot) {
   snapshot.docChanges().forEach(change => {
     if (change.type === 'added' || change.type === 'modified') {
-      state.cards[change.doc.id] = change.doc.data();
+      const data = change.doc.data();
+      data.id = String(change.doc.id);
+      if (!data.position) data.position = data.createdAt || 0;
+      cleanEmptyReactions(data);
+      state.cards[change.doc.id] = data;
     }
     if (change.type === 'removed') {
       delete state.cards[change.doc.id];
     }
   });
   if (state.activeBoardId) {
-    state.boardCardsCache[state.activeBoardId] = { ...state.cards };
+    const board = state.boards[state.activeBoardId];
+    if (board && board.cols) {
+      const colIds = new Set(board.cols.map(c => c.id));
+      const filtered = {};
+      for (const [id, card] of Object.entries(state.cards)) {
+        if (colIds.has(card.columnId)) filtered[id] = card;
+      }
+      state.boardCardsCache[state.activeBoardId] = filtered;
+    } else {
+      state.boardCardsCache[state.activeBoardId] = { ...state.cards };
+    }
   }
-  renderBoard();
+  scheduleRenderBoard();
 }
 
 /**
@@ -55,9 +85,9 @@ function makeCommentsHandler(cardId) {
     snapshot.forEach(doc => comments.push(doc.data()));
     state.comments[cardId] = comments;
     if (state.activeBoardId) {
-      state.boardCommentsCache[state.activeBoardId] = { ...state.comments };
+      state.boardCommentsCache[state.activeBoardId] = JSON.parse(JSON.stringify(state.comments));
     }
-    renderBoard();
+    scheduleRenderBoard();
   };
 }
 
@@ -71,6 +101,7 @@ async function loadBoardCards(boardId) {
     state.cardsUnsub();
     state.cardsUnsub = null;
   }
+  Object.values(state.commentsUnsubs).forEach(unsub => unsub());
   state.comments = {};
   state.commentsUnsubs = {};
 
@@ -100,7 +131,11 @@ async function loadBoardCards(boardId) {
     const snapshot = await cardsCol(boardId).get();
     state.cards = {};
     snapshot.forEach(doc => {
-      state.cards[doc.id] = doc.data();
+      const data = doc.data();
+      data.id = String(doc.id);
+      if (!data.position) data.position = data.createdAt || 0;
+      cleanEmptyReactions(data);
+      state.cards[doc.id] = data;
     });
     state.boardCardsCache[boardId] = { ...state.cards };
   } catch (error) {

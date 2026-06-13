@@ -1,18 +1,4 @@
 /**
- * Экранирует спецсимволы HTML в строке (дубликат esc() из ui.js).
- * Используется при выводе названий досок в селекте выбора шаблона.
- * @param {string} text — исходный текст
- * @returns {string} — экранированная строка
- */
-function escapeHtml(text) {
-  return String(text || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/**
  * Заполняет выпадающий список (select) опциями досок для копирования колонок.
  * Сортирует доски по дате создания (новые сверху).
  * Первая опция — «Не заполнять» (без копирования).
@@ -25,7 +11,7 @@ function fillNewBoardCopySourceOptions(selectedId = '') {
   Object.values(state.boards)
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
     .forEach(board => {
-      options.push(`<option value="${board.id}">${escapeHtml(board.name)}</option>`);
+      options.push(`<option value="${board.id}">${esc(board.name)}</option>`);
     });
   select.innerHTML = options.join('');
   select.value = selectedId || '';
@@ -120,8 +106,6 @@ async function doCreateBoard(name, sourceBoardId = null) {
     name,
     createdAt: Date.now(),
     cols: JSON.parse(JSON.stringify(DEFAULT_COLS)),
-    _nextId: 10,
-    _nextColId: 5,
   };
   const colIdMap = remapBoardIds(board);
 
@@ -158,6 +142,7 @@ async function doCreateBoard(name, sourceBoardId = null) {
             createdAt: Date.now(),
             modifiedAt: Date.now(),
             columnId: targetColId,
+            position: sourceCard.position || sourceCard.createdAt || Date.now(),
           });
         });
         board._nextId = Math.max(board._nextId || 0, ...cardsToSave.map(c => c.id));
@@ -192,7 +177,8 @@ async function doCopyBoard(name) {
   delete board.cards;
   const colIdMap = remapBoardIds(board);
 
-  const sourceCards = Object.values(state.cards);
+  const sourceColIds = new Set(source.cols.map(c => c.id));
+  const sourceCards = Object.values(state.cards).filter(c => sourceColIds.has(c.columnId));
   const cardsToSave = [];
   sourceCards.forEach(sourceCard => {
     const newId = uid();
@@ -278,14 +264,6 @@ async function doDelBoard() {
   lsSave();
   renderSidebar();
   showToast('Доска удалена');
-}
-
-/**
- * Закрывает оверлей по его ID (дубликат для изоляции модуля).
- * @param {string} id — ID HTML-элемента оверлея
- */
-function closeOverlay(id) {
-  document.getElementById(id)?.classList.remove('open');
 }
 
 /**

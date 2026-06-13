@@ -165,14 +165,6 @@ async function doDelCol() {
 }
 
 /**
- * Закрывает оверлей по его ID (дубликат для изоляции модуля).
- * @param {string} id — ID HTML-элемента оверлея
- */
-function closeOverlay(id) {
-  document.getElementById(id)?.classList.remove('open');
-}
-
-/**
  * Экспорт функций колонок в глобальную область window.
  */
 window.openAddCol = openAddCol;

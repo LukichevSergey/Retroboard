@@ -183,14 +183,6 @@ function initGlobalTimer() {
 }
 
 /**
- * Закрывает оверлей по его ID (дубликат функции из ui.js для изоляции модуля).
- * @param {string} id — ID HTML-элемента оверлея
- */
-function closeOverlay(id) {
-  document.getElementById(id)?.classList.remove('open');
-}
-
-/**
  * Экспорт функций таймера в глобальную область window,
  * чтобы они были доступны из HTML-атрибутов (onclick).
  */

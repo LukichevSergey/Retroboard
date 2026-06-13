@@ -206,6 +206,52 @@ async function fbDelComment(boardId, cardId, commentId) {
 }
 
 /**
+ * Атомарно обновляет реакции карточки в Firestore.
+ * ИспользуетFieldValue.arrayUnion/arrayRemove для users[]
+ * иFieldValue.increment() для count.
+ * @param {string} boardId — ID доски
+ * @param {number|string} cardId — ID карточки
+ * @param {string} emoji — эмодзи реакции
+ * @param {boolean} add — true для добавления, false для удаления
+ * @param {string} userId — ID пользователя
+ */
+async function fbUpdateReaction(boardId, cardId, emoji, add, userId) {
+  if (!firebaseOk) return;
+  setSyncBadge('syncing', 'Сохранение…');
+  try {
+    const update = {};
+    update[`reactions.${emoji}.count`] = firebase.firestore.FieldValue.increment(add ? 1 : -1);
+    if (add) {
+      update[`reactions.${emoji}.users`] = firebase.firestore.FieldValue.arrayUnion(userId);
+    } else {
+      update[`reactions.${emoji}.users`] = firebase.firestore.FieldValue.arrayRemove(userId);
+    }
+    await cardDoc(boardId, cardId).update(update);
+    setSyncBadge('ok', 'Сохранено');
+  } catch (e) {
+    console.error(e);
+    setSyncBadge('offline', 'Ошибка');
+  }
+}
+
+/**
+ * Атомарно обновляет commentCount карточки в Firestore.
+ * @param {string} boardId — ID доски
+ * @param {number|string} cardId — ID карточки
+ * @param {number} delta — величина изменения (+1 или -1)
+ */
+async function fbUpdateCommentCount(boardId, cardId, delta) {
+  if (!firebaseOk) return;
+  try {
+    await cardDoc(boardId, cardId).update({
+      commentCount: firebase.firestore.FieldValue.increment(delta),
+    });
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+/**
  * Подписывается на изменения карточек доски в реальном времени.
  * @param {string} boardId — ID доски
  * @param {Function} onChange — callback с snapshot изменений

@@ -66,7 +66,7 @@ let lastRenderedBoardId = null;
  */
 function renderReactions(card) {
   const reactions = card.reactions || {};
-  const keys = Object.keys(reactions);
+  const keys = Object.keys(reactions).sort();
   if (keys.length === 0) return '';
   const userSet = state.userReactions[card.id] || new Set();
   const pills = keys.map(emoji => {
@@ -390,31 +390,43 @@ function updateCardElement(cardEl, card) {
   if (cardFooter) {
     const commentCount = card.commentCount || 0;
     const isOwner = card.ownerId && (card.ownerId === getClientId());
-    let footerBtns = `\n      <button class="comment-btn${state.commentOpenState.has(card.id) ? ' active' : ''}" onclick="toggleComments('${card.id}')" title="Комментарии">` +
-        `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
-          `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>` +
-        `</svg>${commentCount ? `<span class="comment-count">${commentCount}</span>` : ''}` +
-      `</button>\n      <div class="card-spacer"></div>\n      <button class="reaction-trigger-btn" onclick="openEmojiPicker(event, '${card.id}')" title="Добавить реакцию">😊+</button>`;
 
-    if (isOwner) {
-      footerBtns += `\n      <button class="card-color-btn" onclick="openCardColorPopup(event, '${card.id}')" title="Цвет карточки">` +
-        `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
-          `<path d="M12 2a10 10 0 1 0 10 10"/>` +
-          `<circle cx="12" cy="12" r="3"/>` +
-          `<path d="M12 2v4M12 18v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M2 12h4M18 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>` +
-        `</svg>` +
-      `</button>\n      <button class="card-edit-btn" onclick="openCardEditModal('${card.id}')" title="Редактировать">✎</button>\n      <button class="card-del-btn" onclick="delCard('${card.id}')" title="Удалить">` +
-                    `<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">` +
-                      `<polyline points="3 6 5 6 21 6"/>` +
-                      `<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>` +
-                      `<path d="M10 11v6"/>` +
-                      `<path d="M14 11v6"/>` +
-                      `<path d="M9 6V4h6v2"/>` +
-                    `</svg>` +
-                    `</button>`;
+    const commentBtn = cardFooter.querySelector('.comment-btn');
+    if (commentBtn) {
+      commentBtn.classList.toggle('active', state.commentOpenState.has(card.id));
+      const existingCount = commentBtn.querySelector('.comment-count');
+      if (commentCount) {
+        if (existingCount) {
+          existingCount.textContent = commentCount;
+        } else {
+          commentBtn.insertAdjacentHTML('beforeend', `<span class="comment-count">${commentCount}</span>`);
+        }
+      } else if (existingCount) {
+        existingCount.remove();
+      }
     }
 
-    cardFooter.innerHTML = footerBtns;
+    const ownerBtnsExist = cardFooter.querySelector('.card-color-btn');
+    if (isOwner && !ownerBtnsExist) {
+      cardFooter.insertAdjacentHTML('beforeend',
+        `<button class="card-color-btn" onclick="openCardColorPopup(event, '${card.id}')" title="Цвет карточки">` +
+          `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
+            `<path d="M12 2a10 10 0 1 0 10 10"/>` +
+            `<circle cx="12" cy="12" r="3"/>` +
+            `<path d="M12 2v4M12 18v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M2 12h4M18 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>` +
+          `</svg>` +
+        `</button>\n      <button class="card-edit-btn" onclick="openCardEditModal('${card.id}')" title="Редактировать">✎</button>\n      <button class="card-del-btn" onclick="delCard('${card.id}')" title="Удалить">` +
+          `<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">` +
+            `<polyline points="3 6 5 6 21 6"/>` +
+            `<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>` +
+            `<path d="M10 11v6"/>` +
+            `<path d="M14 11v6"/>` +
+            `<path d="M9 6V4h6v2"/>` +
+          `</svg>` +
+        `</button>`);
+    } else if (!isOwner && ownerBtnsExist) {
+      cardFooter.querySelectorAll('.card-color-btn, .card-edit-btn, .card-del-btn').forEach(el => el.remove());
+    }
   }
 }
 
