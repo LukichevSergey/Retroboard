@@ -67,11 +67,7 @@ let lastRenderedBoardId = null;
 function renderReactions(card) {
   const reactions = card.reactions || {};
   const keys = Object.keys(reactions);
-  if (keys.length === 0) {
-    return `<div class="reaction-bar">
-      <button class="reaction-add-btn" onclick="openEmojiPicker(event, ${card.id})" title="Добавить реакцию">+</button>
-    </div>`;
-  }
+  if (keys.length === 0) return '';
   const userSet = state.userReactions[card.id] || new Set();
   const pills = keys.map(emoji => {
     const r = reactions[emoji];
@@ -82,10 +78,7 @@ function renderReactions(card) {
       <span class="reaction-count">${r.count || 0}</span>
     </button>`;
   }).join('');
-  return `<div class="reaction-bar">
-    ${pills}
-    <button class="reaction-add-btn" onclick="openEmojiPicker(event, ${card.id})" title="Добавить реакцию">+</button>
-  </div>`;
+  return `<div class="reaction-bar">${pills}</div>`;
 }
 
 function cardHTML(card) {
@@ -106,7 +99,8 @@ function cardHTML(card) {
           `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>` +
         `</svg>${commentCount}` +
       `</button>
-      <div class="card-spacer"></div>`;
+      <div class="card-spacer"></div>
+      <button class="reaction-trigger-btn" onclick="openEmojiPicker(event, ${card.id})" title="Добавить реакцию">😊+</button>`;
 
   if (isOwner) {
     footerBtns += `
@@ -359,9 +353,17 @@ function updateCardElement(cardEl, card) {
     cardText.innerHTML = linkify(card.text);
   }
 
-  const reactionBar = cardEl.querySelector('.reaction-bar');
-  if (reactionBar) {
-    reactionBar.outerHTML = renderReactions(card);
+  const reactionsHtml = renderReactions(card);
+  const existingBar = cardEl.querySelector('.reaction-bar');
+  if (reactionsHtml) {
+    if (existingBar) {
+      existingBar.outerHTML = reactionsHtml;
+    } else {
+      const footer = cardEl.querySelector('.card-footer');
+      if (footer) footer.insertAdjacentHTML('beforebegin', reactionsHtml);
+    }
+  } else if (existingBar) {
+    existingBar.remove();
   }
 
   const commentBtn = cardEl.querySelector('.comment-btn');
@@ -392,7 +394,7 @@ function updateCardElement(cardEl, card) {
         `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
           `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>` +
         `</svg>${commentCount ? `<span class="comment-count">${commentCount}</span>` : ''}` +
-      `</button>\n      <div class="card-spacer"></div>`;
+      `</button>\n      <div class="card-spacer"></div>\n      <button class="reaction-trigger-btn" onclick="openEmojiPicker(event, ${card.id})" title="Добавить реакцию">😊+</button>`;
 
     if (isOwner) {
       footerBtns += `\n      <button class="card-color-btn" onclick="openCardColorPopup(event, ${card.id})" title="Цвет карточки">` +

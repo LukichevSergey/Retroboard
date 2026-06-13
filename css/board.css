@@ -112,13 +112,13 @@
 .reaction-emoji { font-size: 13px; line-height: 1; }
 .reaction-count { font-size: 11px; font-weight: 600; }
 
-.reaction-add-btn {
-  font-family: 'DM Sans', sans-serif; font-size: 14px; width: 22px; height: 22px; border-radius: 50%;
-  border: 1px dashed var(--border2); background: transparent; color: var(--hint); cursor: pointer;
-  display: flex; align-items: center; justify-content: center; transition: all .12s; opacity: 0;
+.reaction-trigger-btn {
+  font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 2px 6px; border-radius: 99px;
+  border: 1px solid var(--border2); background: transparent; color: var(--hint); cursor: pointer;
+  display: flex; align-items: center; gap: 2px; transition: all .12s; opacity: 0;
 }
-.card:hover .reaction-add-btn, .reaction-bar:empty + .reaction-add-btn { opacity: 1; }
-.reaction-add-btn:hover { border-color: var(--accent); color: var(--accent); border-style: solid; }
+.card:hover .reaction-trigger-btn { opacity: 1; }
+.reaction-trigger-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* Emoji Picker */
 .emoji-picker {
