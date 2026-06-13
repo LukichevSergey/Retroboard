@@ -56,15 +56,38 @@ let lastRenderedBoardId = null;
  * Генерирует HTML-разметку одной карточки.
  * Включает:
  *   - Текст карточки (с linkify для кликабельных ссылок),
- *   - Кнопку голосования (vote-btn) с счётчиком,
+ *   - Блок реакций (reaction-bar) с эмодзи и кнопкой "+",
  *   - Кнопку комментариев (comment-btn) с количеством,
  *   - Кнопку выбора цвета (card-color-btn),
  *   - Кнопки редактирования и удаления (только для владельца),
  *   - Секцию комментариев (список + форма добавления).
- * Если карточка имеет свой цвет — добавляются CSS-переменные через inline-стили.
- * @param {Object} card — объект карточки { id, text, votes, color, comments, ownerId, ... }
+ * @param {Object} card — объект карточки { id, text, reactions, color, ownerId, ... }
  * @returns {string} — HTML-разметка карточки
  */
+function renderReactions(card) {
+  const reactions = card.reactions || {};
+  const keys = Object.keys(reactions);
+  if (keys.length === 0) {
+    return `<div class="reaction-bar">
+      <button class="reaction-add-btn" onclick="openEmojiPicker(event, ${card.id})" title="Добавить реакцию">+</button>
+    </div>`;
+  }
+  const userSet = state.userReactions[card.id] || new Set();
+  const pills = keys.map(emoji => {
+    const r = reactions[emoji];
+    const reacted = userSet.has(emoji) ? ' reacted' : '';
+    const title = r.users ? r.users.join(', ') : '';
+    return `<button class="reaction-pill${reacted}" onclick="toggleReaction(${card.id},'${emoji}')" title="${esc(title)}">
+      <span class="reaction-emoji">${emoji}</span>
+      <span class="reaction-count">${r.count || 0}</span>
+    </button>`;
+  }).join('');
+  return `<div class="reaction-bar">
+    ${pills}
+    <button class="reaction-add-btn" onclick="openEmojiPicker(event, ${card.id})" title="Добавить реакцию">+</button>
+  </div>`;
+}
+
 function cardHTML(card) {
   const contrastText = card.color ? getContrastColor(card.color) : null;
   const btnBg = contrastText === '#fff' ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.7)';
@@ -73,20 +96,11 @@ function cardHTML(card) {
   const comments = getCommentsForCard(card.id);
   const commentCount = count ? `<span class="comment-count">${count}</span>` : '';
   const openClass = state.commentOpenState.has(card.id) ? ' open' : '';
-  const voteLabel = card.votes > 0 ? `${card.votes}` : '';
-  const userVoted = state.userVotes.has(card.id);
   const isOwner = card.ownerId && (card.ownerId === getClientId());
-  // Текст карточки: всегда отображается (редактирование через модальное окно)
   const textHtml = `<div class="card-text">${linkify(card.text)}</div>`;
+  const reactionsHtml = renderReactions(card);
 
-  // Кнопки подвала
   let footerBtns = `
-      <button class="vote-btn ${userVoted ? 'voted' : ''}" onclick="vote(${card.id})">` +
-        `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
-          `<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>` +
-          `<path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>` +
-        `</svg>${voteLabel}` +
-      `</button>
       <button class="comment-btn${state.commentOpenState.has(card.id) ? ' active' : ''}" onclick="toggleComments(${card.id})" title="Комментарии">` +
         `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
           `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>` +
@@ -117,6 +131,7 @@ function cardHTML(card) {
 
   return `<div class="card" id="card-${card.id}" ${bgStyle} onmousedown="onCardDown(event, ${card.id})">
     ${textHtml}
+    ${reactionsHtml}
     <div class="card-footer">${footerBtns}
     </div>
     <div class="comment-section${openClass}" id="comments-${card.id}">
@@ -344,15 +359,9 @@ function updateCardElement(cardEl, card) {
     cardText.innerHTML = linkify(card.text);
   }
 
-  const voteBtn = cardEl.querySelector('.vote-btn');
-  if (voteBtn) {
-    voteBtn.classList.toggle('voted', state.userVotes.has(card.id));
-    const voteLabel = card.votes > 0 ? `${card.votes}` : '';
-    voteBtn.innerHTML = `
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
-        <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
-      </svg>${voteLabel}`;
+  const reactionBar = cardEl.querySelector('.reaction-bar');
+  if (reactionBar) {
+    reactionBar.outerHTML = renderReactions(card);
   }
 
   const commentBtn = cardEl.querySelector('.comment-btn');
@@ -375,19 +384,11 @@ function updateCardElement(cardEl, card) {
     }
   }
 
-  // Пересоздаёт подвал для актуализации кнопок edit/delete
   const cardFooter = cardEl.querySelector('.card-footer');
   if (cardFooter) {
     const commentCount = card.commentCount || 0;
-    const voteLabel = card.votes > 0 ? `${card.votes}` : '';
-    const userVoted = state.userVotes.has(card.id);
     const isOwner = card.ownerId && (card.ownerId === getClientId());
-    let footerBtns = `\n      <button class="vote-btn ${userVoted ? 'voted' : ''}" onclick="vote(${card.id})">` +
-        `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
-          `<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>` +
-          `<path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>` +
-        `</svg>${voteLabel}` +
-      `</button>\n      <button class="comment-btn${state.commentOpenState.has(card.id) ? ' active' : ''}" onclick="toggleComments(${card.id})" title="Комментарии">` +
+    let footerBtns = `\n      <button class="comment-btn${state.commentOpenState.has(card.id) ? ' active' : ''}" onclick="toggleComments(${card.id})" title="Комментарии">` +
         `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
           `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>` +
         `</svg>${commentCount ? `<span class="comment-count">${commentCount}</span>` : ''}` +
@@ -400,9 +401,7 @@ function updateCardElement(cardEl, card) {
       `</button>`;
 
     if (isOwner) {
-      footerBtns += `\n      <button class="card-edit-btn" onclick="openCardEditModal(${card.id})" title="Редактировать">` +
-                    `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>` +
-                    `</button>\n      <button class="card-del-btn" onclick="delCard(${card.id})" title="Удалить">` +
+      footerBtns += `\n      <button class="card-edit-btn" onclick="openCardEditModal(${card.id})" title="Редактировать">✎</button>\n      <button class="card-del-btn" onclick="delCard(${card.id})" title="Удалить">` +
                     `<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">` +
                       `<polyline points="3 6 5 6 21 6"/>` +
                       `<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>` +

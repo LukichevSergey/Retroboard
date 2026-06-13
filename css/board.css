@@ -90,14 +90,49 @@
 .card-text { font-size: 13px; line-height: 1.55; color: inherit; word-break: break-word; }
 .card-footer { display: flex; align-items: center; gap: 5px; }
 
-.vote-btn, .comment-btn {
+.comment-btn {
   font-family: 'DM Sans', sans-serif; background: transparent; border: 1px solid var(--action-btn-border, rgba(60, 60, 60, .12)); border-radius: 99px; padding: 2px 9px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; color: var(--action-btn-fg, rgba(60, 60, 60, .72)); transition: all .12s;
 }
-.vote-btn:hover, .comment-btn:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
-.vote-btn.voted, .comment-btn.active { background: transparent; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.comment-btn:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
+.comment-btn.active { background: transparent; border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
-.vote-btn svg, .comment-btn svg { width: 12px; height: 12px; display: block; }
-.vote-btn svg path, .vote-btn svg circle, .vote-btn svg polyline, .comment-btn svg path, .comment-btn svg circle, .comment-btn svg polyline { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.comment-btn svg { width: 12px; height: 12px; display: block; }
+.comment-btn svg path, .comment-btn svg circle, .comment-btn svg polyline { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ══════════════════════ REACTIONS ══════════════════════ */
+.reaction-bar { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+.reaction-pill {
+  font-family: 'DM Sans', sans-serif; font-size: 12px; display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 6px; border-radius: 99px; border: 1px solid var(--border2); background: var(--surface);
+  cursor: pointer; transition: all .12s; line-height: 1.3;
+}
+.reaction-pill:hover { border-color: var(--accent); background: var(--accent-bg); }
+.reaction-pill.reacted { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+.reaction-emoji { font-size: 13px; line-height: 1; }
+.reaction-count { font-size: 11px; font-weight: 600; }
+
+.reaction-add-btn {
+  font-family: 'DM Sans', sans-serif; font-size: 14px; width: 22px; height: 22px; border-radius: 50%;
+  border: 1px dashed var(--border2); background: transparent; color: var(--hint); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all .12s; opacity: 0;
+}
+.card:hover .reaction-add-btn, .reaction-bar:empty + .reaction-add-btn { opacity: 1; }
+.reaction-add-btn:hover { border-color: var(--accent); color: var(--accent); border-style: solid; }
+
+/* Emoji Picker */
+.emoji-picker {
+  position: fixed; z-index: 200; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 6px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
+}
+.emoji-picker-btn {
+  width: 34px; height: 34px; border: none; background: transparent; border-radius: 6px;
+  cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;
+  transition: background .1s;
+}
+.emoji-picker-btn:hover { background: var(--accent-bg); }
+.emoji-picker-btn.picked { background: var(--accent-bg); outline: 2px solid var(--accent); }
 
 .comment-count { font-size: 11px; font-weight: 700; line-height: 1; min-width: 18px; text-align: center; padding: 2px 6px; border-radius: 999px; background: transparent; color: var(--action-btn-fg, rgba(60, 60, 60, .72)); }
 .comment-btn.active .comment-count { color: var(--accent); }

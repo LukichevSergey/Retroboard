@@ -21,33 +21,38 @@ function lsSave() {
 }
 
 /**
- * Сохраняет множество ID карточек, за которые пользователь уже голосовал,
- * в localStorage под ключом 'rb_user_votes'.
- * Массив преобразуется из Set через Array.from() перед сериализацией.
- * Позволяет сохранять состояние «я уже голосовал» между сессиями.
+ * Сохраняет реакции пользователя в localStorage под ключом 'rb_user_reactions'.
+ * Формат: { [cardId]: [emoji1, emoji2, ...] }.
  */
-function lsSaveUserVotes() {
+function lsSaveUserReactions() {
   try {
-    localStorage.setItem('rb_user_votes', JSON.stringify(Array.from(state.userVotes)));
+    const data = {};
+    for (const [cardId, emojiSet] of Object.entries(state.userReactions)) {
+      data[cardId] = Array.from(emojiSet);
+    }
+    localStorage.setItem('rb_user_reactions', JSON.stringify(data));
   } catch (e) {
-    console.warn('LS user votes save failed', e);
+    console.warn('LS user reactions save failed', e);
   }
 }
 
 /**
- * Загружает из localStorage ранее сохранённые голоса пользователя.
- * Читает ключ 'rb_user_votes', парсит JSON-массив и восстанавливает
- * множество state.userVotes. Если данных нет или произошла ошибка —
- * создаёт пустой Set.
+ * Загружает из localStorage ранее сохранённые реакции пользователя.
+ * Восстанавливает state.userReactions как { [cardId]: Set<emoji> }.
  */
-function lsLoadUserVotes() {
+function lsLoadUserReactions() {
   try {
-    const saved = JSON.parse(localStorage.getItem('rb_user_votes') || 'null');
-    if (Array.isArray(saved)) {
-      state.userVotes = new Set(saved);
+    const saved = JSON.parse(localStorage.getItem('rb_user_reactions') || 'null');
+    if (saved && typeof saved === 'object') {
+      state.userReactions = {};
+      for (const [cardId, emojis] of Object.entries(saved)) {
+        if (Array.isArray(emojis)) {
+          state.userReactions[cardId] = new Set(emojis);
+        }
+      }
     }
   } catch (e) {
-    state.userVotes = new Set();
+    state.userReactions = {};
   }
 }
 

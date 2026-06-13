@@ -83,6 +83,29 @@ const DEFAULT_COLS = [
 ];
 
 /**
+ * Набор доступных эмодзи для реакций на карточки.
+ * Каждый элемент содержит: emoji — символ, label — название для tooltip.
+ */
+const EMOJI_SET = [
+  { emoji: '👍', label: 'thumbs up' },
+  { emoji: '👎', label: 'thumbs down' },
+  { emoji: '❤️', label: 'heart' },
+  { emoji: '🎉', label: 'celebration' },
+  { emoji: '🚀', label: 'rocket' },
+  { emoji: '😢', label: 'crying' },
+  { emoji: '🔥', label: 'fire' },
+  { emoji: '👀', label: 'eyes' },
+  { emoji: '✅', label: 'done' },
+  { emoji: '😭', label: 'sobbing' },
+  { emoji: '💯', label: 'hundred' },
+  { emoji: '🤔', label: 'thinking' },
+  { emoji: '👏', label: 'clap' },
+  { emoji: '😊', label: 'smile' },
+  { emoji: '🤝', label: 'handshake' },
+  { emoji: '💪', label: 'strong' },
+];
+
+/**
  * Пустой объект карточек по умолчанию для новой доски.
  * Ключи — ID колонок, значения — пустые массивы (карточек нет).
  * Заполняется при создании доски через doCreateBoard().

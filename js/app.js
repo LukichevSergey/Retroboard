@@ -133,7 +133,7 @@ async function loadBoardCards(boardId) {
  */
 async function boot() {
   initFirebase();
-  lsLoadUserVotes();
+  lsLoadUserReactions();
   if (firebaseOk) {
     try {
       const snapshot = await boardsCol().get();
@@ -188,6 +188,7 @@ function initializeShellEvents() {
     if (event.key === 'Escape') {
       document.querySelectorAll('.overlay.open').forEach(overlay => overlay.classList.remove('open'));
       closeColorPopup();
+      closeEmojiPicker();
       const board = curBoard();
       if (!board) return;
       board.cols.forEach(col => closeAdd(col.id));

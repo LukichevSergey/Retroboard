@@ -25,7 +25,7 @@
  *   timerRunning      — запущен ли таймер сейчас,
  *   timerInterval     — ID интервала (setInterval) для локального отсчёта,
  *   globalTimerUnsub  — функция отписки от Firebase-подписки таймера,
- *   userVotes         — Set с ID карточек, за которые текущий пользователь проголосовал,
+ *   userReactions     — объект { [cardId]: Set<emoji> } — реакции текущего пользователя на карточки,
  *   _pendingBoardRender — флаг: есть ли отложенная перерисовка доски ( во время drag),
  *   _globalCardId     — счётчик для генерации уникальных ID карточек (инкрементируется).
  */
@@ -52,7 +52,7 @@ const state = {
   timerRunning: false,
   timerInterval: null,
   globalTimerUnsub: null,
-  userVotes: new Set(),
+  userReactions: {},
   _pendingBoardRender: false,
   _globalCardId: Date.now(),
 };

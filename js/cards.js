@@ -76,7 +76,7 @@ function addCard(colId) {
   const card = {
     id: newId,
     text,
-    votes: 0,
+    reactions: {},
     color: null,
     ownerId: getClientId(),
     createdAt: Date.now(),
@@ -123,29 +123,102 @@ function delCard(cardId) {
 }
 
 /**
- * Голосует за карточку (или снимает голос).
+ * Переключает реакцию пользователя на карточке.
  * @param {number} cardId — ID карточки
+ * @param {string} emoji  — эмодзи реакции
  */
-function vote(cardId) {
+function toggleReaction(cardId, emoji) {
   const board = curBoard();
   if (!board) return;
   const card = state.cards[cardId];
   if (!card) return;
 
-  const hasVoted = state.userVotes.has(cardId);
-  if (hasVoted) {
-    card.votes = Math.max(0, card.votes - 1);
-    state.userVotes.delete(cardId);
+  if (!card.reactions) card.reactions = {};
+  if (!card.reactions[emoji]) card.reactions[emoji] = { count: 0, users: [] };
+
+  if (!state.userReactions[cardId]) state.userReactions[cardId] = new Set();
+  const userSet = state.userReactions[cardId];
+
+  const clientId = getClientId();
+  const reaction = card.reactions[emoji];
+
+  if (userSet.has(emoji)) {
+    reaction.users = reaction.users.filter(u => u !== clientId);
+    reaction.count = reaction.users.length;
+    userSet.delete(emoji);
+    if (reaction.users.length === 0) delete card.reactions[emoji];
   } else {
-    card.votes = (card.votes || 0) + 1;
-    state.userVotes.add(cardId);
+    reaction.users.push(clientId);
+    reaction.count = reaction.users.length;
+    userSet.add(emoji);
   }
-  if ('voted' in card) delete card.voted;
 
   fbSaveCard(board.id, card);
   lsSave();
-  lsSaveUserVotes();
+  lsSaveUserReactions();
   renderBoard();
+}
+
+/**
+ * Открывает попап выбора эмодзи для реакции.
+ * @param {MouseEvent} event — событие клика
+ * @param {number} cardId    — ID карточки
+ */
+function openEmojiPicker(event, cardId) {
+  event.stopPropagation();
+  closeEmojiPicker();
+
+  const picker = document.createElement('div');
+  picker.className = 'emoji-picker';
+  picker.id = 'emojiPicker';
+
+  const userSet = state.userReactions[cardId] || new Set();
+
+  picker.innerHTML = EMOJI_SET.map(item => {
+    const picked = userSet.has(item.emoji) ? ' picked' : '';
+    return `<button class="emoji-picker-btn${picked}" title="${item.label}" onclick="addReactionFromPicker(${cardId},'${item.emoji}')">${item.emoji}</button>`;
+  }).join('');
+
+  const btn = event.currentTarget;
+  document.body.appendChild(picker);
+
+  const btnRect = btn.getBoundingClientRect();
+  const pickerW = 160;
+  const pickerH = 160;
+
+  let x = btnRect.left + btnRect.width / 2 - pickerW / 2;
+  let y = btnRect.top - pickerH - 6;
+
+  if (y < 8) y = btnRect.bottom + 6;
+  if (x + pickerW > window.innerWidth - 8) x = window.innerWidth - pickerW - 8;
+  if (x < 8) x = 8;
+
+  picker.style.left = x + 'px';
+  picker.style.top = y + 'px';
+
+  setTimeout(() => {
+    document.addEventListener('click', closeEmojiPickerOnOutside, { once: true });
+    document.addEventListener('keydown', closeEmojiPickerOnEsc, { once: true });
+  }, 0);
+}
+
+function closeEmojiPicker() {
+  const existing = document.getElementById('emojiPicker');
+  if (existing) existing.remove();
+}
+
+function closeEmojiPickerOnOutside(e) {
+  const picker = document.getElementById('emojiPicker');
+  if (picker && !picker.contains(e.target)) closeEmojiPicker();
+}
+
+function closeEmojiPickerOnEsc(e) {
+  if (e.key === 'Escape') closeEmojiPicker();
+}
+
+function addReactionFromPicker(cardId, emoji) {
+  closeEmojiPicker();
+  toggleReaction(cardId, emoji);
 }
 
 /**
@@ -571,7 +644,10 @@ window.openAdd = openAdd;
 window.closeAdd = closeAdd;
 window.addCard = addCard;
 window.delCard = delCard;
-window.vote = vote;
+window.toggleReaction = toggleReaction;
+window.openEmojiPicker = openEmojiPicker;
+window.closeEmojiPicker = closeEmojiPicker;
+window.addReactionFromPicker = addReactionFromPicker;
 window.openCardColorPopup = openCardColorPopup;
 window.applyCardColor = applyCardColor;
 window.toggleComments = toggleComments;
