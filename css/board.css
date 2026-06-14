@@ -142,8 +142,9 @@
 .comment-section { display: none; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--border2); }
 .comment-section.open { display: flex; }
 
-.comments-list { display: flex; flex-direction: column; gap: 8px; }
-.comment-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px; border-radius: var(--radius); background: var(--surface2); border: 1px solid var(--border2); }
+.comments-list { display: flex; flex-direction: column; gap: 0; }
+.comment-item { display: flex; align-items: flex-start; gap: 8px; padding: 10px; border-radius: var(--radius); background: transparent; border: none; border-top: 1px solid var(--border); }
+.comment-item:first-child { border-top: none; }
 .comment-item .comment-text { flex: 1; font-size: 13px; line-height: 1.5; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
 
 .card-text, .comment-text { overflow-wrap: anywhere; }
