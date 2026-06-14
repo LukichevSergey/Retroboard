@@ -51,21 +51,30 @@ function boardDoc(id) {
 }
 
 /**
- * Сохраняет (создаёт или перезаписывает) доску в Firebase Firestore.
- * Обновляет badge состояния синхронизации: 'Сохранение…' → 'Сохранено' / 'Ошибка'.
- * Использует метод set(), который перезаписывает весь документ.
- * @param {Object} board — объект доски с полями id, name, cols, cards и т.д.
+ * Обёртка для Firebase-операций с обновлением badge состояния синхронизации.
+ * Устанавливает 'Сохранение…' перед вызовом, 'Сохранено' при успехе, 'Ошибка' при ошибке.
+ * @param {Function} asyncFn — асинхронная функция для выполнения
+ * @returns {*} — результат asyncFn или undefined при ошибке
  */
-async function fbSave(board) {
+async function fbWithSyncBadge(asyncFn) {
   if (!firebaseOk) return;
   setSyncBadge('syncing', 'Сохранение…');
   try {
-    await boardDoc(board.id).set(board);
+    const result = await asyncFn();
     setSyncBadge('ok', 'Сохранено');
+    return result;
   } catch (e) {
     console.error(e);
     setSyncBadge('offline', 'Ошибка');
   }
+}
+
+/**
+ * Сохраняет (создаёт или перезаписывает) доску в Firebase Firestore.
+ * @param {Object} board — объект доски с полями id, name, cols, cards и т.д.
+ */
+async function fbSave(board) {
+  await fbWithSyncBadge(() => boardDoc(board.id).set(board));
 }
 
 /**
@@ -147,15 +156,7 @@ function commentDoc(boardId, cardId, commentId) {
  * @param {Object} card — объект карточки
  */
 async function fbSaveCard(boardId, card) {
-  if (!firebaseOk) return;
-  setSyncBadge('syncing', 'Сохранение…');
-  try {
-    await cardDoc(boardId, card.id).set(card);
-    setSyncBadge('ok', 'Сохранено');
-  } catch (e) {
-    console.error(e);
-    setSyncBadge('offline', 'Ошибка');
-  }
+  await fbWithSyncBadge(() => cardDoc(boardId, card.id).set(card));
 }
 
 /**
@@ -179,15 +180,7 @@ async function fbDelCard(boardId, cardId) {
  * @param {Object} comment — объект комментария
  */
 async function fbSaveComment(boardId, cardId, comment) {
-  if (!firebaseOk) return;
-  setSyncBadge('syncing', 'Сохранение…');
-  try {
-    await commentDoc(boardId, cardId, comment.id).set(comment);
-    setSyncBadge('ok', 'Сохранено');
-  } catch (e) {
-    console.error(e);
-    setSyncBadge('offline', 'Ошибка');
-  }
+  await fbWithSyncBadge(() => commentDoc(boardId, cardId, comment.id).set(comment));
 }
 
 /**
@@ -207,8 +200,6 @@ async function fbDelComment(boardId, cardId, commentId) {
 
 /**
  * Атомарно обновляет реакции карточки в Firestore.
- * ИспользуетFieldValue.arrayUnion/arrayRemove для users[]
- * иFieldValue.increment() для count.
  * @param {string} boardId — ID доски
  * @param {number|string} cardId — ID карточки
  * @param {string} emoji — эмодзи реакции
@@ -216,9 +207,7 @@ async function fbDelComment(boardId, cardId, commentId) {
  * @param {string} userId — ID пользователя
  */
 async function fbUpdateReaction(boardId, cardId, emoji, add, userId) {
-  if (!firebaseOk) return;
-  setSyncBadge('syncing', 'Сохранение…');
-  try {
+  await fbWithSyncBadge(async () => {
     const update = {};
     update[`reactions.${emoji}.count`] = firebase.firestore.FieldValue.increment(add ? 1 : -1);
     if (add) {
@@ -227,11 +216,7 @@ async function fbUpdateReaction(boardId, cardId, emoji, add, userId) {
       update[`reactions.${emoji}.users`] = firebase.firestore.FieldValue.arrayRemove(userId);
     }
     await cardDoc(boardId, cardId).update(update);
-    setSyncBadge('ok', 'Сохранено');
-  } catch (e) {
-    console.error(e);
-    setSyncBadge('offline', 'Ошибка');
-  }
+  });
 }
 
 /**

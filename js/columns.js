@@ -49,10 +49,8 @@ function confirmNewCol() {
   const label = document.getElementById('newColName').value.trim() || 'Новая колонка';
   const colId = 'c_' + uid();
   board.cols.push({ id: colId, label, s: state._newColScheme });
-  fbSave(board);
-  lsSave();
+  saveBoard();
   closeOverlay('newColOverlay');
-  renderBoard();
   setTimeout(() => {
     const input = document.getElementById('cli-' + colId);
     if (input) {
@@ -76,8 +74,7 @@ function renameCol(colId, value) {
   const column = board.cols.find(col => col.id === colId);
   if (!column) return;
   column.label = value.trim() || column.label;
-  fbSave(board);
-  lsSave();
+  saveBoard();
 }
 
 /**
@@ -116,10 +113,8 @@ function applyColScheme(colId, schemeId) {
   const column = board.cols.find(col => col.id === colId);
   if (!column) return;
   column.s = schemeId;
-  fbSave(board);
-  lsSave();
   closeColorPopup();
-  renderBoard();
+  saveBoard();
 }
 
 /**
@@ -158,9 +153,7 @@ async function doDelCol() {
   board.cols = board.cols.filter(col => col.id !== colId);
   state._pendingDelCol = null;
   closeOverlay('delColOverlay');
-  fbSave(board);
-  lsSave();
-  renderBoard();
+  saveBoard();
   showToast('Колонка удалена');
 }
 
