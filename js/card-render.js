@@ -173,10 +173,12 @@ function restoreBoardInputState(saved) {
  * @param {Object}      card  — объект карточки
  */
 function applyCardStyles(cardEl, card) {
-  const contrastText = card.color ? getContrastColor(card.color) : null;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const displayColor = (isDark && card.color) ? dimColor(card.color) : card.color;
+  const contrastText = displayColor ? getContrastColor(displayColor) : null;
   const btnBg = contrastText === '#fff' ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.7)';
-  if (card.color) {
-    cardEl.style.cssText = `--card-bg:${card.color};--card-text:${contrastText};--card-btn-bg:${btnBg};--card-btn-fg:${contrastText};`;
+  if (displayColor) {
+    cardEl.style.cssText = `--card-bg:${displayColor};--card-text:${contrastText};--card-btn-bg:${btnBg};--card-btn-fg:${contrastText};`;
   } else {
     cardEl.style.cssText = '';
   }

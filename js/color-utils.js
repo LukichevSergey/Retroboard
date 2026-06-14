@@ -60,9 +60,9 @@ function dimColor(hex) {
   let g = parseInt(h.slice(2, 4), 16);
   let b = parseInt(h.slice(4, 6), 16);
   const dr = 0x25, dg = 0x26, db = 0x2B;
-  r = Math.round(r * 0.3 + dr * 0.7);
-  g = Math.round(g * 0.3 + dg * 0.7);
-  b = Math.round(b * 0.3 + db * 0.7);
+  r = Math.round(r * 0.45 + dr * 0.55);
+  g = Math.round(g * 0.45 + dg * 0.55);
+  b = Math.round(b * 0.45 + db * 0.55);
   return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
 }
 

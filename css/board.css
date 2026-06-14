@@ -91,7 +91,7 @@
 .card-footer { display: flex; align-items: center; gap: 5px; }
 
 .comment-btn {
-  font-family: 'DM Sans', sans-serif; background: transparent; border: none; border-radius: 99px; padding: 2px 4px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 3px; color: var(--hint); transition: all .12s;
+  font-family: 'DM Sans', sans-serif; background: transparent; border: none; border-radius: 99px; padding: 2px 4px; font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 3px; color: var(--card-text, var(--hint)); transition: all .12s;
 }
 .comment-btn:hover { color: var(--accent); background: transparent; }
 .comment-btn.active { background: transparent; color: var(--accent); font-weight: 600; }
@@ -114,7 +114,7 @@
 
 .reaction-trigger-btn {
   font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 2px 4px; border-radius: 99px;
-  border: none; background: transparent; color: var(--hint); cursor: pointer;
+  border: none; background: transparent; color: var(--card-text, var(--hint)); cursor: pointer;
   display: flex; align-items: center; gap: 2px; transition: all .12s; opacity: 0;
 }
 .card:hover .reaction-trigger-btn { opacity: 1; }
@@ -134,7 +134,7 @@
 .emoji-picker-btn:hover { background: var(--accent-bg); }
 .emoji-picker-btn.picked { background: var(--accent-bg); outline: 2px solid var(--accent); }
 
-.comment-count { font-size: 11px; font-weight: 700; line-height: 1; text-align: center; background: transparent; color: var(--hint); }
+.comment-count { font-size: 11px; font-weight: 700; line-height: 1; text-align: center; background: transparent; color: var(--card-text, var(--hint)); }
 .comment-btn.active .comment-count { color: var(--accent); }
 
 .card-spacer { flex: 1; }
@@ -158,20 +158,20 @@
 .comment-loading { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .comment-spinner { width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
 
-.card-color-btn { width: 22px; height: 22px; border-radius: 5px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--hint); opacity: 0; transition: all .15s; }
+.card-color-btn { width: 22px; height: 22px; border-radius: 5px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--card-text, var(--hint)); opacity: 0; transition: all .15s; }
 .card:hover .card-color-btn { opacity: 1; }
-.card-color-btn:hover { background: transparent; color: var(--text); }
+.card-color-btn:hover { background: transparent; color: var(--card-text, var(--text)); }
 .card-color-btn svg { width: 12px; height: 12px; }
 
-.card-del-btn { width: 22px; height: 22px; border-radius: 5px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--hint); opacity: 0; transition: all .15s; }
+.card-del-btn { width: 22px; height: 22px; border-radius: 5px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--card-text, var(--hint)); opacity: 0; transition: all .15s; }
 .card:hover .card-del-btn { opacity: 1; }
 .card-del-btn:hover { background: transparent; color: #E24B4A; }
 .card-del-btn svg { width: 12px; height: 12px; }
 
 /* edit button looks like delete but subtle */
-.card-edit-btn { width: 22px; height: 22px; border-radius: 5px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--hint); opacity: 0; transition: all .15s; }
+.card-edit-btn { width: 22px; height: 22px; border-radius: 5px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--card-text, var(--hint)); opacity: 0; transition: all .15s; }
 .card:hover .card-edit-btn { opacity: 1; }
-.card-edit-btn:hover { background: transparent; color: var(--text); }
+.card-edit-btn:hover { background: transparent; color: var(--card-text, var(--text)); }
 .card-edit-btn svg { width: 12px; height: 12px; }
 
 /* small action buttons for comments */
@@ -193,6 +193,7 @@
 [data-theme="dark"] .add-wrap:focus-within { border-color: var(--accent); }
 [data-theme="dark"] .comment-section { border-top-color: color-mix(in srgb, var(--card-text, var(--text)) 22%, transparent); }
 [data-theme="dark"] .comment-item { border-top-color: color-mix(in srgb, var(--card-text, var(--text)) 22%, transparent); }
+[data-theme="dark"] .card:has(style*="--card-bg") { --accent: #A098E8; }
 
 .board-loading { position: relative; opacity: 0.5; pointer-events: none; }
 .board-loading::after {
