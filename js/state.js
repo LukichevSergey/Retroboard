@@ -95,6 +95,10 @@ function getClientId() {
   }
 }
 
+function isAdmin() {
+  return new URLSearchParams(window.location.search).get('admin') === 'true';
+}
+
 /**
  * Сохраняет текущую доску в Firebase и localStorage, перерисовывает доску.
  */
@@ -123,3 +127,4 @@ function saveCard(card) {
  * чтобы она была доступна из HTML-атрибутов (onclick и т.п.).
  */
 window.getClientId = getClientId;
+window.isAdmin = isAdmin;

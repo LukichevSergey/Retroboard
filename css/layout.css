@@ -32,13 +32,17 @@
   outline: none;
   background: transparent;
   font-family: 'DM Sans', sans-serif;
-  max-width: 300px;
+  min-width: 0;
+  flex: 1 1 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: all .15s;
 }
 .topbar-name:hover:not([readonly]) { border-color: var(--border2); background: var(--surface2); }
 .topbar-name:focus { border-color: var(--accent); background: var(--surface); }
 
-.topbar-spacer { flex: 1; }
+.topbar-spacer { flex: 0; }
 
 .sync-badge {
   font-size: 11px;

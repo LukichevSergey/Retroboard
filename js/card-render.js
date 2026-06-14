@@ -35,7 +35,7 @@ function cardHTML(card) {
   const comments = getCommentsForCard(card.id);
   const commentCount = count ? `<span class="comment-count">${count}</span>` : '';
   const openClass = state.commentOpenState.has(card.id) ? ' open' : '';
-  const isOwner = card.ownerId && (card.ownerId === getClientId());
+  const isOwner = isAdmin() || (card.ownerId && (card.ownerId === getClientId()));
   const textHtml = `<div class="card-text">${linkify(card.text)}</div>`;
   const reactionsHtml = renderReactions(card);
 
@@ -195,7 +195,7 @@ function renderCommentItems(comments, cardId) {
   if (!comments || comments.length === 0) return '<div class="comment-empty">Нет комментариев</div>';
   return comments.map(comment => {
     const isEditing = state._editingComment && state._editingComment.commentId === comment.id && state._editingComment.cardId === cardId;
-    const isOwner = comment.ownerId && (comment.ownerId === getClientId());
+    const isOwner = isAdmin() || (comment.ownerId && (comment.ownerId === getClientId()));
     if (isEditing) {
       return `
         <div class="comment-item">
@@ -256,7 +256,7 @@ function updateCardElement(cardEl, card) {
   const cardFooter = cardEl.querySelector('.card-footer');
   if (cardFooter) {
     const commentCount = card.commentCount || 0;
-    const isOwner = card.ownerId && (card.ownerId === getClientId());
+    const isOwner = isAdmin() || (card.ownerId && (card.ownerId === getClientId()));
 
     const commentBtn = cardFooter.querySelector('.comment-btn');
     if (commentBtn) {

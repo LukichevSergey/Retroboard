@@ -181,6 +181,10 @@ async function loadBoardCards(boardId) {
  */
 async function boot() {
   applyTheme(getTheme());
+  if (isAdmin()) {
+    const b = document.getElementById('adminBadge');
+    if (b) b.style.display = '';
+  }
   initFirebase();
   lsLoadUserReactions();
   if (firebaseOk) {

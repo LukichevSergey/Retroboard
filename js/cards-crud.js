@@ -17,6 +17,7 @@ function colOfCard(cardId) {
  * @returns {boolean} — true если проверка пройдена
  */
 function requireOwnership(ownerId, actionLabel) {
+  if (isAdmin()) return true;
   if (!ownerId) {
     alert(`Этот элемент не имеет владельца и не может быть ${actionLabel}.`);
     return false;
