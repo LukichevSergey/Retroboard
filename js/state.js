@@ -25,14 +25,21 @@
  *   timerRunning      — запущен ли таймер сейчас,
  *   timerInterval     — ID интервала (setInterval) для локального отсчёта,
  *   globalTimerUnsub  — функция отписки от Firebase-подписки таймера,
- *   userVotes         — Set с ID карточек, за которые текущий пользователь проголосовал,
+ *   userReactions     — объект { [cardId]: Set<emoji> } — реакции текущего пользователя на карточки,
  *   _pendingBoardRender — флаг: есть ли отложенная перерисовка доски ( во время drag),
  *   _globalCardId     — счётчик для генерации уникальных ID карточек (инкрементируется).
  */
 const state = {
   boards: {},
   activeBoardId: null,
+  cards: {},
+  boardCardsCache: {},
+  comments: {},
+  boardCommentsCache: {},
+  cardsUnsub: null,
+  commentsUnsubs: {},
   commentOpenState: new Set(),
+  _loadingComments: new Set(),
   _newBoardMode: 'create',
   _pendingDelBoard: null,
   _newColScheme: 0,
@@ -45,9 +52,8 @@ const state = {
   timerRunning: false,
   timerInterval: null,
   globalTimerUnsub: null,
-  userVotes: new Set(),
+  userReactions: {},
   _pendingBoardRender: false,
-  _globalCardId: Date.now(),
 };
 
 /**
@@ -65,18 +71,6 @@ function curBoard() {
  */
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-}
-
-/**
- * Генерирует следующий глобально уникальный числовой ID для карточки.
- * Использует счётчик state._globalCardId, который инициализируется
- * текущим временем и инкрементируется при каждом вызове.
- * Гарантирует уникальность ID карточек в пределах сессии.
- */
-function nextGlobalCardId() {
-  if (!state._globalCardId) state._globalCardId = Date.now();
-  state._globalCardId += 1;
-  return state._globalCardId;
 }
 
 /**

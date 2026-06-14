@@ -55,6 +55,11 @@
 #editCommentOverlay .modal textarea { width: 100%; min-height: 120px; resize: none; padding: 10px 12px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; line-height: 1.5; outline: none; }
 #editCommentOverlay .modal textarea:focus { border-color: transparent; }
 
+/* dark mode */
+[data-theme="dark"] .overlay { background: rgba(0, 0, 0, 0.6); }
+[data-theme="dark"] .scheme-tile:hover { border-color: rgba(255, 255, 255, 0.15); }
+[data-theme="dark"] .swatch.active { border-color: var(--accent); }
+
 /* scheme grid */
 .scheme-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .scheme-tile { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all .15s; }

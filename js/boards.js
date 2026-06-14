@@ -1,18 +1,4 @@
 /**
- * Экранирует спецсимволы HTML в строке (дубликат esc() из ui.js).
- * Используется при выводе названий досок в селекте выбора шаблона.
- * @param {string} text — исходный текст
- * @returns {string} — экранированная строка
- */
-function escapeHtml(text) {
-  return String(text || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/**
  * Заполняет выпадающий список (select) опциями досок для копирования колонок.
  * Сортирует доски по дате создания (новые сверху).
  * Первая опция — «Не заполнять» (без копирования).
@@ -25,7 +11,7 @@ function fillNewBoardCopySourceOptions(selectedId = '') {
   Object.values(state.boards)
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
     .forEach(board => {
-      options.push(`<option value="${board.id}">${escapeHtml(board.name)}</option>`);
+      options.push(`<option value="${board.id}">${esc(board.name)}</option>`);
     });
   select.innerHTML = options.join('');
   select.value = selectedId || '';
@@ -80,25 +66,22 @@ function copyBoard() {
  * В зависимости от режима (_newBoardMode) вызывает doCopyBoard или doCreateBoard.
  * Закрывает модальное окно.
  */
-function confirmNewBoard() {
+async function confirmNewBoard() {
   const name = document.getElementById('newBoardName').value.trim() || 'Новая доска';
   if (state._newBoardMode === 'copy') {
-    doCopyBoard(name);
+    await doCopyBoard(name);
   } else {
     const sourceBoardId = document.getElementById('newBoardCopySource')?.value || null;
-    doCreateBoard(name, sourceBoardId);
+    await doCreateBoard(name, sourceBoardId);
   }
   closeOverlay('newBoardOverlay');
 }
 
 /**
- * Переназначает все ID колонок и карточек в доске на новые уникальные значения.
- * Создаёт маппинг colIdMap { старый_ID: новый_ID }, затем обновляет:
- *   - board.cols (каждая колонка получает новый id),
- *   - board.cards (ключи — новые ID колонок, карточки — с новыми id).
- * Используется при создании новой доски и копировании, чтобы избежать
- * конфликтов ID.
+ * Переназначает все ID колонок в доске на новые уникальные значения.
+ * Возвращает маппинг colIdMap { старый_ID: новый_ID } для обновления card.columnId.
  * @param {Object} board — объект доски (модифицируется на месте)
+ * @returns {Object} — маппинг старых ID колонок на новые
  */
 function remapBoardIds(board) {
   const colIdMap = {};
@@ -107,75 +90,70 @@ function remapBoardIds(board) {
     colIdMap[col.id] = newId;
     return { ...col, id: newId };
   });
-
-  const newCards = {};
-  let maxCardId = 0;
-  Object.entries(board.cards).forEach(([oldColId, cards]) => {
-    const newColId = colIdMap[oldColId] || oldColId;
-    newCards[newColId] = cards.map(card => {
-      const newId = nextGlobalCardId();
-      maxCardId = Math.max(maxCardId, newId);
-      return { ...card, id: newId };
-    });
-  });
-  board.cards = newCards;
-  board._nextId = Math.max(board._nextId || 0, maxCardId);
+  return colIdMap;
 }
 
 /**
  * Создаёт новую доску с дефолтными колонками.
- * Если указан sourceBoardId — копирует карточки из последней колонки
- * исходной доски в первую колонку новой (с переназначением ID и сбросом голосов).
- * Сохраняет в Firebase и localStorage, обновляет сайдбар, выбирает новую доску.
+ * Сохраняет доску и карточки в подколлекции Firebase.
  * @param {string}      name          — название новой доски
  * @param {string|null} sourceBoardId — ID доски-источника для копирования карточек (или null)
  */
-function doCreateBoard(name, sourceBoardId = null) {
+async function doCreateBoard(name, sourceBoardId = null) {
   const id = 'b_' + uid();
   const board = {
     id,
     name,
     createdAt: Date.now(),
     cols: JSON.parse(JSON.stringify(DEFAULT_COLS)),
-    cards: JSON.parse(JSON.stringify(DEFAULT_CARDS)),
-    _nextId: 10,
-    _nextColId: 5,
   };
-  remapBoardIds(board);
+  const colIdMap = remapBoardIds(board);
 
+  const cardsToSave = [];
   if (sourceBoardId) {
     const source = state.boards[sourceBoardId];
     if (source && Array.isArray(source.cols) && source.cols.length) {
       const lastCol = source.cols[source.cols.length - 1];
-      const lastCards = source.cards?.[lastCol.id] || [];
+
+      let sourceCards = Object.values(state.cards).filter(c => c.columnId === lastCol.id);
+      if (sourceCards.length === 0 && firebaseOk) {
+        try {
+          const snap = await cardsCol(sourceBoardId).get();
+          sourceCards = [];
+          snap.forEach(doc => {
+            const data = doc.data();
+            if (data.columnId === lastCol.id) sourceCards.push(data);
+          });
+        } catch (e) {
+          console.error('Error loading source board cards:', e);
+        }
+      }
+
       const targetColId = board.cols?.[0]?.id;
-      if (targetColId && lastCards.length) {
-        board.cards[targetColId] = lastCards.map(sourceCard => {
-          const newId = nextGlobalCardId();
-          return {
+      if (targetColId && sourceCards.length) {
+        sourceCards.forEach(sourceCard => {
+          const newId = uid();
+          cardsToSave.push({
             id: newId,
             text: sourceCard.text,
             votes: 0,
             color: sourceCard.color || null,
-            comments: (sourceCard.comments || []).map(comment => ({
-              id: 'cm_' + uid(),
-              text: comment.text,
-              createdAt: comment.createdAt || Date.now(),
-              modifiedAt: comment.modifiedAt || comment.createdAt || Date.now(),
-              ownerId: comment.ownerId || getClientId(),
-            })),
             ownerId: getClientId(),
             createdAt: Date.now(),
             modifiedAt: Date.now(),
-          };
+            columnId: targetColId,
+          });
         });
-        board._nextId = Math.max(board._nextId || 0, ...board.cards[targetColId].map(card => card.id));
+        board._nextId = Math.max(board._nextId || 0, ...cardsToSave.map(c => c.id));
       }
     }
   }
 
   state.boards[id] = board;
   fbSave(board);
+  for (const card of cardsToSave) {
+    fbSaveCard(id, card);
+  }
   lsSave();
   renderSidebar();
   selectBoard(id);
@@ -184,12 +162,10 @@ function doCreateBoard(name, sourceBoardId = null) {
 
 /**
  * Копирует текущую доску с новым именем.
- * Создаёт глубокую копию текущей доски через JSON-сериализацию,
- * переназначает все ID (колонки + карточки), сбрасывает голоса (voted).
- * Сохраняет в Firebase и localStorage, выбирает новую доску.
+ * Сохраняет доску и карточки в подколлекции Firebase.
  * @param {string} name — название для копии доски
  */
-function doCopyBoard(name) {
+async function doCopyBoard(name) {
   const source = curBoard();
   if (!source) return;
   const id = 'b_' + uid();
@@ -197,10 +173,29 @@ function doCopyBoard(name) {
   board.id = id;
   board.name = name;
   board.createdAt = Date.now();
-  remapBoardIds(board);
-  Object.values(board.cards).forEach(arr => arr.forEach(card => { if ('voted' in card) delete card.voted; }));
+  delete board.cards;
+  const colIdMap = remapBoardIds(board);
+
+  const sourceColIds = new Set(source.cols.map(c => c.id));
+  const sourceCards = Object.values(state.cards).filter(c => sourceColIds.has(c.columnId));
+  const cardsToSave = [];
+  sourceCards.forEach(sourceCard => {
+    const newId = uid();
+    const newColId = colIdMap[sourceCard.columnId] || sourceCard.columnId;
+    cardsToSave.push({
+      ...sourceCard,
+      id: newId,
+      columnId: newColId,
+      votes: 0,
+    });
+    if ('voted' in cardsToSave[cardsToSave.length - 1]) delete cardsToSave[cardsToSave.length - 1].voted;
+  });
+
   state.boards[id] = board;
   fbSave(board);
+  for (const card of cardsToSave) {
+    fbSaveCard(id, card);
+  }
   lsSave();
   renderSidebar();
   selectBoard(id);
@@ -224,16 +219,43 @@ function confirmDelBoard(id) {
 
 /**
  * Выполняет удаление доски после подтверждения.
- * Удаляет из Firebase и state.boards. Если удалена активная доска —
- * сбрасывает activeBoardId и показывает пустое состояние.
- * Обновляет сайдбар и показывает toast.
+ * Удаляет карточки из подколлекции, затем доску из Firebase.
+ * Если удалена активная доска — сбрасывает activeBoardId.
  */
-function doDelBoard() {
+async function doDelBoard() {
   if (!state._pendingDelBoard) return;
-  fbDel(state._pendingDelBoard);
-  delete state.boards[state._pendingDelBoard];
-  if (state.activeBoardId === state._pendingDelBoard) {
+  const boardId = state._pendingDelBoard;
+  const board = state.boards[boardId];
+  const boardColIds = board ? new Set(board.cols.map(c => c.id)) : new Set();
+
+  if (firebaseOk) {
+    try {
+      const cardsSnapshot = await cardsCol(boardId).get();
+      const batch = db.batch();
+      cardsSnapshot.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+    } catch (e) {
+      console.error('Error deleting cards subcollection:', e);
+    }
+  }
+
+  fbDel(boardId);
+
+  Object.keys(state.cards).forEach(cardId => {
+    if (boardColIds.has(state.cards[cardId]?.columnId)) {
+      delete state.cards[cardId];
+    }
+  });
+
+  delete state.boards[boardId];
+
+  if (state.activeBoardId === boardId) {
     state.activeBoardId = null;
+    state.cards = {};
+    state.comments = {};
+    if (state.cardsUnsub) { state.cardsUnsub(); state.cardsUnsub = null; }
+    Object.values(state.commentsUnsubs).forEach(unsub => unsub());
+    state.commentsUnsubs = {};
     showEmpty();
   }
   state._pendingDelBoard = null;
@@ -241,14 +263,6 @@ function doDelBoard() {
   lsSave();
   renderSidebar();
   showToast('Доска удалена');
-}
-
-/**
- * Закрывает оверлей по его ID (дубликат для изоляции модуля).
- * @param {string} id — ID HTML-элемента оверлея
- */
-function closeOverlay(id) {
-  document.getElementById(id)?.classList.remove('open');
 }
 
 /**

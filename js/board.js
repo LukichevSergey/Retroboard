@@ -5,7 +5,9 @@
  * @returns {Object} — объект схемы { bg, text, dot, tag, tt, ... }
  */
 function getScheme(schemeId) {
-  return COL_SCHEMES[schemeId] || COL_SCHEMES[0];
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const list = isDark ? COL_SCHEMES_DARK : COL_SCHEMES;
+  return list[schemeId] || list[0];
 }
 
 /**
@@ -56,55 +58,78 @@ let lastRenderedBoardId = null;
  * Генерирует HTML-разметку одной карточки.
  * Включает:
  *   - Текст карточки (с linkify для кликабельных ссылок),
- *   - Кнопку голосования (vote-btn) с счётчиком,
+ *   - Блок реакций (reaction-bar) с эмодзи и кнопкой "+",
  *   - Кнопку комментариев (comment-btn) с количеством,
  *   - Кнопку выбора цвета (card-color-btn),
  *   - Кнопки редактирования и удаления (только для владельца),
  *   - Секцию комментариев (список + форма добавления).
- * Если карточка имеет свой цвет — добавляются CSS-переменные через inline-стили.
- * @param {Object} card — объект карточки { id, text, votes, color, comments, ownerId, ... }
+ * @param {Object} card — объект карточки { id, text, reactions, color, ownerId, ... }
  * @returns {string} — HTML-разметка карточки
  */
+function renderReactions(card) {
+  const reactions = card.reactions || {};
+  const keys = Object.keys(reactions).sort();
+  if (keys.length === 0) return '';
+  const userSet = state.userReactions[card.id] || new Set();
+  const pills = keys.map(emoji => {
+    const r = reactions[emoji];
+    const reacted = userSet.has(emoji) ? ' reacted' : '';
+    const title = r.users ? r.users.join(', ') : '';
+    return `<button class="reaction-pill${reacted}" onclick="toggleReaction('${card.id}','${emoji}')" title="${esc(title)}">
+      <span class="reaction-emoji">${emoji}</span>
+      <span class="reaction-count">${r.count || 0}</span>
+    </button>`;
+  }).join('');
+  return `<div class="reaction-bar">${pills}</div>`;
+}
+
+function dimColor(hex) {
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  let r = parseInt(h.slice(0, 2), 16);
+  let g = parseInt(h.slice(2, 4), 16);
+  let b = parseInt(h.slice(4, 6), 16);
+  const dr = 0x25, dg = 0x26, db = 0x2B;
+  r = Math.round(r * 0.3 + dr * 0.7);
+  g = Math.round(g * 0.3 + dg * 0.7);
+  b = Math.round(b * 0.3 + db * 0.7);
+  return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+}
+
 function cardHTML(card) {
-  const contrastText = card.color ? getContrastColor(card.color) : null;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const displayColor = (isDark && card.color) ? dimColor(card.color) : card.color;
+  const contrastText = displayColor ? getContrastColor(displayColor) : null;
   const btnBg = contrastText === '#fff' ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.7)';
-  const bgStyle = card.color ? `style="--card-bg:${card.color};--card-text:${contrastText};--card-btn-bg:${btnBg};--card-btn-fg:${contrastText}"` : '';
-  const comments = card.comments || [];
-  const count = comments.length;
+  const bgStyle = displayColor ? `style="--card-bg:${displayColor};--card-text:${contrastText};--card-btn-bg:${btnBg};--card-btn-fg:${contrastText}"` : '';
+  const count = card.commentCount || 0;
+  const comments = getCommentsForCard(card.id);
   const commentCount = count ? `<span class="comment-count">${count}</span>` : '';
   const openClass = state.commentOpenState.has(card.id) ? ' open' : '';
-  const voteLabel = card.votes > 0 ? `${card.votes}` : '';
-  const userVoted = state.userVotes.has(card.id);
   const isOwner = card.ownerId && (card.ownerId === getClientId());
-  // Текст карточки: всегда отображается (редактирование через модальное окно)
   const textHtml = `<div class="card-text">${linkify(card.text)}</div>`;
+  const reactionsHtml = renderReactions(card);
 
-  // Кнопки подвала
   let footerBtns = `
-      <button class="vote-btn ${userVoted ? 'voted' : ''}" onclick="vote(${card.id})">` +
-        `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
-          `<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>` +
-          `<path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>` +
-        `</svg>${voteLabel}` +
-      `</button>
-      <button class="comment-btn${state.commentOpenState.has(card.id) ? ' active' : ''}" onclick="toggleComments(${card.id})" title="Комментарии">` +
+      <button class="comment-btn${state.commentOpenState.has(card.id) ? ' active' : ''}" onclick="toggleComments('${card.id}')" title="Комментарии">` +
         `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
           `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>` +
         `</svg>${commentCount}` +
       `</button>
       <div class="card-spacer"></div>
-      <button class="card-color-btn" onclick="openCardColorPopup(event, ${card.id})" title="Цвет карточки">` +
+      <button class="reaction-trigger-btn" onclick="openEmojiPicker(event, '${card.id}')" title="Добавить реакцию">😊+</button>`;
+
+  if (isOwner) {
+    footerBtns += `
+      <button class="card-color-btn" onclick="openCardColorPopup(event, '${card.id}')" title="Цвет карточки">` +
         `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
           `<path d="M12 2a10 10 0 1 0 10 10"/>` +
           `<circle cx="12" cy="12" r="3"/>` +
           `<path d="M12 2v4M12 18v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M2 12h4M18 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>` +
         `</svg>` +
-      `</button>`;
-
-  if (isOwner) {
-    footerBtns += `
-      <button class="card-edit-btn" onclick="openCardEditModal(${card.id})" title="Редактировать">✎</button>
-      <button class="card-del-btn" onclick="delCard(${card.id})" title="Удалить">` +
+      `</button>
+      <button class="card-edit-btn" onclick="openCardEditModal('${card.id}')" title="Редактировать">✎</button>
+      <button class="card-del-btn" onclick="delCard('${card.id}')" title="Удалить">` +
         `<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">` +
           `<polyline points="3 6 5 6 21 6"/>` +
           `<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>` +
@@ -115,8 +140,9 @@ function cardHTML(card) {
       `</button>`;
   }
 
-  return `<div class="card" id="card-${card.id}" ${bgStyle} onmousedown="onCardDown(event, ${card.id})">
+  return `<div class="card" id="card-${card.id}" ${bgStyle} onmousedown="onCardDown(event, '${card.id}')">
     ${textHtml}
+    ${reactionsHtml}
     <div class="card-footer">${footerBtns}
     </div>
     <div class="comment-section${openClass}" id="comments-${card.id}">
@@ -125,7 +151,7 @@ function cardHTML(card) {
       </div>
       <div class="comment-form">
         <textarea id="comment-input-${card.id}" placeholder="Напишите комментарий" rows="3"></textarea>
-        <button class="btn btn-primary" onclick="saveComment(${card.id})">Сохранить</button>
+        <button class="btn btn-primary" onclick="saveComment('${card.id}')">Сохранить</button>
       </div>
     </div>
   </div>`;
@@ -292,6 +318,9 @@ function applyCardStyles(cardEl, card) {
  * @returns {string} — HTML-строка списка комментариев
  */
 function renderCommentItems(comments, cardId) {
+  if (state._loadingComments.has(cardId)) {
+    return '<div class="comment-loading"><div class="comment-spinner"></div>Загрузка...</div>';
+  }
   if (!comments || comments.length === 0) return '<div class="comment-empty">Нет комментариев</div>';
   return comments.map(comment => {
     const isEditing = state._editingComment && state._editingComment.commentId === comment.id && state._editingComment.cardId === cardId;
@@ -302,15 +331,15 @@ function renderCommentItems(comments, cardId) {
           <textarea id="comment-edit-input-${comment.id}" rows="3">${esc(comment.text)}</textarea>
           <div>
             <button class="btn btn-ghost" onclick="cancelCommentEdit()">Отмена</button>
-            <button class="btn btn-primary" onclick="saveCommentEdit(${cardId}, '${comment.id}')">Сохранить</button>
+            <button class="btn btn-primary" onclick="saveCommentEdit('${cardId}', '${comment.id}')">Сохранить</button>
           </div>
         </div>`;
     }
     const ownerBtns = isOwner ? `<div style="display:flex;gap:6px">` +
-      `<button class="card-edit-btn" onclick="openCommentEditModal(${cardId}, '${comment.id}')" title="Редактировать">` +
+      `<button class="card-edit-btn" onclick="openCommentEditModal('${cardId}', '${comment.id}')" title="Редактировать">` +
         `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>` +
       `</button>` +
-      `<button class="card-del-btn" onclick="delComment(${cardId}, '${comment.id}')" title="Удалить">` +
+      `<button class="card-del-btn" onclick="delComment('${cardId}', '${comment.id}')" title="Удалить">` +
         `<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">` +
           `<polyline points="3 6 5 6 21 6"/>` +
           `<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>` +
@@ -341,20 +370,22 @@ function updateCardElement(cardEl, card) {
     cardText.innerHTML = linkify(card.text);
   }
 
-  const voteBtn = cardEl.querySelector('.vote-btn');
-  if (voteBtn) {
-    voteBtn.classList.toggle('voted', state.userVotes.has(card.id));
-    const voteLabel = card.votes > 0 ? `${card.votes}` : '';
-    voteBtn.innerHTML = `
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-        <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
-        <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
-      </svg>${voteLabel}`;
+  const reactionsHtml = renderReactions(card);
+  const existingBar = cardEl.querySelector('.reaction-bar');
+  if (reactionsHtml) {
+    if (existingBar) {
+      existingBar.outerHTML = reactionsHtml;
+    } else {
+      const footer = cardEl.querySelector('.card-footer');
+      if (footer) footer.insertAdjacentHTML('beforebegin', reactionsHtml);
+    }
+  } else if (existingBar) {
+    existingBar.remove();
   }
 
   const commentBtn = cardEl.querySelector('.comment-btn');
   if (commentBtn) {
-    const commentCount = (card.comments || []).length;
+    const commentCount = card.commentCount || 0;
     commentBtn.classList.toggle('active', state.commentOpenState.has(card.id));
     const commentCountHtml = commentCount ? `<span class="comment-count">${commentCount}</span>` : '';
     commentBtn.innerHTML = `
@@ -368,48 +399,51 @@ function updateCardElement(cardEl, card) {
     commentSection.classList.toggle('open', state.commentOpenState.has(card.id));
     const commentsList = commentSection.querySelector('.comments-list');
     if (commentsList) {
-      commentsList.innerHTML = renderCommentItems(card.comments || [], card.id);
+      commentsList.innerHTML = renderCommentItems(getCommentsForCard(card.id), card.id);
     }
   }
 
-  // Пересоздаёт подвал для актуализации кнопок edit/delete
   const cardFooter = cardEl.querySelector('.card-footer');
   if (cardFooter) {
-    const voteLabel = card.votes > 0 ? `${card.votes}` : '';
-    const userVoted = state.userVotes.has(card.id);
+    const commentCount = card.commentCount || 0;
     const isOwner = card.ownerId && (card.ownerId === getClientId());
-    let footerBtns = `\n      <button class="vote-btn ${userVoted ? 'voted' : ''}" onclick="vote(${card.id})">` +
-        `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
-          `<path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>` +
-          `<path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>` +
-        `</svg>${voteLabel}` +
-      `</button>\n      <button class="comment-btn${state.commentOpenState.has(card.id) ? ' active' : ''}" onclick="toggleComments(${card.id})" title="Комментарии">` +
-        `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
-          `<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>` +
-        `</svg>${card.comments?.length ? `<span class="comment-count">${card.comments.length}</span>` : ''}` +
-      `</button>\n      <div class="card-spacer"></div>\n      <button class="card-color-btn" onclick="openCardColorPopup(event, ${card.id})" title="Цвет карточки">` +
-        `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
-          `<path d="M12 2a10 10 0 1 0 10 10"/>` +
-          `<circle cx="12" cy="12" r="3"/>` +
-          `<path d="M12 2v4M12 18v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M2 12h4M18 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>` +
-        `</svg>` +
-      `</button>`;
 
-    if (isOwner) {
-      footerBtns += `\n      <button class="card-edit-btn" onclick="openCardEditModal(${card.id})" title="Редактировать">` +
-                    `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25z"/><path d="M20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>` +
-                    `</button>\n      <button class="card-del-btn" onclick="delCard(${card.id})" title="Удалить">` +
-                    `<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">` +
-                      `<polyline points="3 6 5 6 21 6"/>` +
-                      `<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>` +
-                      `<path d="M10 11v6"/>` +
-                      `<path d="M14 11v6"/>` +
-                      `<path d="M9 6V4h6v2"/>` +
-                    `</svg>` +
-                    `</button>`;
+    const commentBtn = cardFooter.querySelector('.comment-btn');
+    if (commentBtn) {
+      commentBtn.classList.toggle('active', state.commentOpenState.has(card.id));
+      const existingCount = commentBtn.querySelector('.comment-count');
+      if (commentCount) {
+        if (existingCount) {
+          existingCount.textContent = commentCount;
+        } else {
+          commentBtn.insertAdjacentHTML('beforeend', `<span class="comment-count">${commentCount}</span>`);
+        }
+      } else if (existingCount) {
+        existingCount.remove();
+      }
     }
 
-    cardFooter.innerHTML = footerBtns;
+    const ownerBtnsExist = cardFooter.querySelector('.card-color-btn');
+    if (isOwner && !ownerBtnsExist) {
+      cardFooter.insertAdjacentHTML('beforeend',
+        `<button class="card-color-btn" onclick="openCardColorPopup(event, '${card.id}')" title="Цвет карточки">` +
+          `<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">` +
+            `<path d="M12 2a10 10 0 1 0 10 10"/>` +
+            `<circle cx="12" cy="12" r="3"/>` +
+            `<path d="M12 2v4M12 18v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M2 12h4M18 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>` +
+          `</svg>` +
+        `</button>\n      <button class="card-edit-btn" onclick="openCardEditModal('${card.id}')" title="Редактировать">✎</button>\n      <button class="card-del-btn" onclick="delCard('${card.id}')" title="Удалить">` +
+          `<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">` +
+            `<polyline points="3 6 5 6 21 6"/>` +
+            `<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>` +
+            `<path d="M10 11v6"/>` +
+            `<path d="M14 11v6"/>` +
+            `<path d="M9 6V4h6v2"/>` +
+          `</svg>` +
+        `</button>`);
+    } else if (!isOwner && ownerBtnsExist) {
+      cardFooter.querySelectorAll('.card-color-btn, .card-edit-btn, .card-del-btn').forEach(el => el.remove());
+    }
   }
 }
 
@@ -612,7 +646,7 @@ function renderBoard({ preserveInputState = true } = {}) {
   const existingMap = new Map(existingCols.map(el => [el.dataset.col, el]));
 
   b.cols.forEach((col, index) => {
-    const cards = b.cards[col.id] || [];
+    const cards = getCardsForColumn(col.id);
     let colEl = existingMap.get(col.id);
     if (!colEl) {
       colEl = createColumnElement(col, cards);

@@ -26,6 +26,23 @@
   --shadow-lg: 0 4px 28px rgba(0, 0, 0, 0.14);
 }
 
+[data-theme="dark"] {
+  --bg: #1A1B1E;
+  --surface: #25262B;
+  --surface2: #2C2E33;
+  --surface3: #35373C;
+  --border: rgba(255, 255, 255, 0.08);
+  --border2: rgba(255, 255, 255, 0.15);
+  --text: #E0DED8;
+  --muted: #9A9890;
+  --hint: #6B6962;
+  --accent: #7B73D4;
+  --accent-bg: rgba(123, 115, 212, 0.12);
+  --accent-t: #958FE0;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 4px 28px rgba(0, 0, 0, 0.5);
+}
+
 html, body {
   height: 100%;
   font-family: 'DM Sans', sans-serif;

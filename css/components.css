@@ -80,6 +80,7 @@
   z-index: 9999;
 }
 .toast.show { opacity: 1; transform: none; }
+[data-theme="dark"] .toast { background: var(--surface2); color: var(--text); border: 1px solid var(--border2); }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

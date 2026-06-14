@@ -72,6 +72,7 @@
 }
 .bi-icon-btn:hover { background: var(--surface3, #E8E5DF); color: var(--text); }
 .bi-icon-btn.danger:hover { background: #FCEBEB; color: #E24B4A; }
+[data-theme="dark"] .bi-icon-btn.danger:hover { background: #2E1515; color: #E88A8A; }
 .bi-icon-btn svg { width: 11px; height: 11px; }
 
 .sb-footer {

@@ -1,3 +1,27 @@
+function getTheme() {
+  return localStorage.getItem('rb_theme') || 'light';
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  try { localStorage.setItem('rb_theme', theme); } catch (e) {}
+  if (typeof renderBoard === 'function') renderBoard();
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
+let _renderBoardRaf = null;
+function scheduleRenderBoard() {
+  if (_renderBoardRaf) return;
+  _renderBoardRaf = requestAnimationFrame(() => {
+    _renderBoardRaf = null;
+    renderBoard();
+  });
+}
+
 /**
  * Обрабатывает снапшот изменений коллекции досок из Firebase.
  * Перебирает изменения (added, modified, removed):
@@ -23,6 +47,123 @@ async function handleBoardSnapshot(snapshot) {
   renderSidebar();
 }
 
+function cleanEmptyReactions(card) {
+  if (!card || !card.reactions) return;
+  for (const [emoji, r] of Object.entries(card.reactions)) {
+    if (!r.users || r.users.length === 0) delete card.reactions[emoji];
+  }
+}
+
+/**
+ * Обрабатывает снапшот изменений карточек активной доски.
+ * Обновляет state.cards при добавлении/изменении/удалении карточек.
+ * @param {QuerySnapshot} snapshot — снапшот изменений из Firebase
+ */
+function handleCardsSnapshot(snapshot) {
+  snapshot.docChanges().forEach(change => {
+    if (change.type === 'added' || change.type === 'modified') {
+      const data = change.doc.data();
+      data.id = String(change.doc.id);
+      cleanEmptyReactions(data);
+      state.cards[change.doc.id] = data;
+    }
+    if (change.type === 'removed') {
+      delete state.cards[change.doc.id];
+    }
+  });
+  if (state.activeBoardId) {
+    const board = state.boards[state.activeBoardId];
+    if (board && board.cols) {
+      const colIds = new Set(board.cols.map(c => c.id));
+      const filtered = {};
+      for (const [id, card] of Object.entries(state.cards)) {
+        if (colIds.has(card.columnId)) filtered[id] = card;
+      }
+      state.boardCardsCache[state.activeBoardId] = filtered;
+    } else {
+      state.boardCardsCache[state.activeBoardId] = { ...state.cards };
+    }
+  }
+  scheduleRenderBoard();
+}
+
+/**
+ * Обрабатывает снапшот изменений комментариев карточки.
+ * Обновляет state.comments[cardId] при добавлении/изменении/удалении.
+ * @param {string} cardId — ID карточки
+ * @returns {Function} — callback для onSnapshot
+ */
+function makeCommentsHandler(cardId) {
+  return function(snapshot) {
+    const comments = [];
+    snapshot.forEach(doc => comments.push(doc.data()));
+    state.comments[cardId] = comments;
+    if (state.activeBoardId) {
+      state.boardCommentsCache[state.activeBoardId] = JSON.parse(JSON.stringify(state.comments));
+    }
+    scheduleRenderBoard();
+  };
+}
+
+/**
+ * Загружает карточки доски из Firebase и подписывается на real-time обновления.
+ * Отменяет предыдущую подписку (если была). Для оффлайн-режима — данные уже в state.
+ * @param {string} boardId — ID доски
+ */
+async function loadBoardCards(boardId) {
+  if (state.cardsUnsub) {
+    state.cardsUnsub();
+    state.cardsUnsub = null;
+  }
+  Object.values(state.commentsUnsubs).forEach(unsub => unsub());
+  state.comments = {};
+  state.commentsUnsubs = {};
+
+  const cached = state.boardCardsCache[boardId];
+
+  if (cached) {
+    state.cards = { ...cached };
+    state.comments = { ...(state.boardCommentsCache[boardId] || {}) };
+    state.cardsUnsub = subscribeCards(boardId, handleCardsSnapshot, error => {
+      console.error('Cards subscription error:', error);
+    });
+    renderBoard();
+    return;
+  }
+
+  const inner = document.getElementById('boardInner');
+  if (inner) inner.classList.add('board-loading');
+
+  if (!firebaseOk) {
+    state.cards = {};
+    if (inner) inner.classList.remove('board-loading');
+    renderBoard();
+    return;
+  }
+
+  try {
+    const snapshot = await cardsCol(boardId).get();
+    state.cards = {};
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      data.id = String(doc.id);
+      cleanEmptyReactions(data);
+      state.cards[doc.id] = data;
+    });
+    state.boardCardsCache[boardId] = { ...state.cards };
+  } catch (error) {
+    console.error('Error loading cards:', error);
+    state.cards = {};
+  }
+
+  state.cardsUnsub = subscribeCards(boardId, handleCardsSnapshot, error => {
+    console.error('Cards subscription error:', error);
+  });
+
+  if (inner) inner.classList.remove('board-loading');
+  renderBoard();
+}
+
 /**
  * Главная функция запуска (boot) приложения.
  * 1) Инициализирует Firebase.
@@ -39,8 +180,9 @@ async function handleBoardSnapshot(snapshot) {
  * 7) Выбирает самую новую доску (или первую попавшуюся).
  */
 async function boot() {
+  applyTheme(getTheme());
   initFirebase();
-  lsLoadUserVotes();
+  lsLoadUserReactions();
   if (firebaseOk) {
     try {
       const snapshot = await boardsCol().get();
@@ -95,6 +237,7 @@ function initializeShellEvents() {
     if (event.key === 'Escape') {
       document.querySelectorAll('.overlay.open').forEach(overlay => overlay.classList.remove('open'));
       closeColorPopup();
+      closeEmojiPicker();
       const board = curBoard();
       if (!board) return;
       board.cols.forEach(col => closeAdd(col.id));

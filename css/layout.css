@@ -99,3 +99,36 @@
 }
 .bug-btn:hover { border-color: var(--border2); background: var(--surface); }
 .bug-btn svg { width: 16px; height: 16px; }
+
+.theme-toggle {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--surface2);
+  padding: 0;
+  cursor: pointer;
+  transition: all .2s;
+  color: var(--text);
+}
+.theme-toggle:hover { border-color: var(--border2); background: var(--surface); }
+.theme-toggle svg { width: 16px; height: 16px; }
+.theme-toggle .icon-sun { display: none; }
+.theme-toggle .icon-moon { display: block; }
+[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+/* dark mode status indicators */
+[data-theme="dark"] .timer-pill.running { background: #1E2E15; border-color: #4A7A20; color: #A3D47A; }
+[data-theme="dark"] .timer-pill.running .t-dot { background: #6BBF3A; }
+[data-theme="dark"] .timer-pill.expired { background: #2E1515; border-color: #8A3030; color: #E88A8A; }
+[data-theme="dark"] .timer-pill.expired .t-dot { background: #E25454; }
+[data-theme="dark"] .sync-badge.syncing { border-color: #B08020; background: #2E2510; color: #E8B86A; }
+[data-theme="dark"] .sync-badge.syncing .sd { background: #EFB040; }
+[data-theme="dark"] .sync-badge.ok { border-color: #4A7A20; background: #1E2E15; color: #A3D47A; }
+[data-theme="dark"] .sync-badge.ok .sd { background: #6BBF3A; }
+[data-theme="dark"] .sync-badge.offline { border-color: #8A3030; background: #2E1515; color: #E88A8A; }
+[data-theme="dark"] .sync-badge.offline .sd { background: #E24B4A; }
