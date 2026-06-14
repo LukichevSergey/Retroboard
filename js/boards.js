@@ -142,7 +142,6 @@ async function doCreateBoard(name, sourceBoardId = null) {
             createdAt: Date.now(),
             modifiedAt: Date.now(),
             columnId: targetColId,
-            position: sourceCard.position || sourceCard.createdAt || Date.now(),
           });
         });
         board._nextId = Math.max(board._nextId || 0, ...cardsToSave.map(c => c.id));

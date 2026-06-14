@@ -9,26 +9,6 @@ function colOfCard(cardId) {
   return card.columnId || null;
 }
 
-function needsReindex(colId) {
-  const cards = getCardsForColumn(colId);
-  for (let i = 1; i < cards.length; i++) {
-    const gap = (cards[i].position || 0) - (cards[i - 1].position || 0);
-    if (gap < 2) return true;
-  }
-  return false;
-}
-
-function reindexColumn(colId) {
-  const board = curBoard();
-  if (!board) return;
-  const cards = getCardsForColumn(colId);
-  cards.forEach((card, i) => {
-    card.position = (i + 1) * 1000;
-    fbSaveCard(board.id, card);
-  });
-  lsSave();
-}
-
 /**
  * Возвращает массив карточек для указанной колонки, отсортированный по позиции.
  * @param {string} colId — ID колонки
@@ -37,7 +17,7 @@ function reindexColumn(colId) {
 function getCardsForColumn(colId) {
   return Object.values(state.cards)
     .filter(card => card.columnId === colId)
-    .sort((a, b) => (a.position || 0) - (b.position || 0) || (a.createdAt || 0) - (b.createdAt || 0));
+    .sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
 }
 
 /**
@@ -92,9 +72,6 @@ function addCard(colId) {
   if (!text) return;
   const newId = uid();
 
-  const existing = getCardsForColumn(colId);
-  const lastPos = existing.length > 0 ? (existing[existing.length - 1].position || 0) : 0;
-
   const card = {
     id: newId,
     text,
@@ -104,7 +81,6 @@ function addCard(colId) {
     createdAt: Date.now(),
     modifiedAt: Date.now(),
     columnId: colId,
-    position: lastPos + 1000,
   };
 
   state.cards[newId] = card;
@@ -600,28 +576,12 @@ function onDragMove(event) {
   state.dnd.targetCol = targetCol;
   if (!targetCol) return;
   document.querySelector(`.column[data-col="${targetCol}"]`)?.classList.add('drag-over');
-  const body = document.getElementById('cb-' + targetCol);
-  if (!body) return;
-  const cardsContainer = body.querySelector('.cards-list') || body;
-  let insertBefore = null;
-  const targetCards = getCardsForColumn(targetCol);
-  for (const card of targetCards) {
-    if (card.id === state.dnd.cardId) continue;
-    const cardEl = document.getElementById('card-' + card.id);
-    if (!cardEl) continue;
-    const rect = cardEl.getBoundingClientRect();
-    if (event.clientY < rect.top + rect.height / 2) {
-      insertBefore = card.id;
-      break;
-    }
-  }
-  state.dnd.insertBefore = insertBefore;
-  const indicator = document.createElement('div');
-  indicator.className = 'drop-ind';
-  if (insertBefore !== null) {
-    const reference = document.getElementById('card-' + insertBefore);
-    if (reference) cardsContainer.insertBefore(indicator, reference);
-  } else {
+  if (targetCol !== state.dnd.cardId && colOfCard(state.dnd.cardId) !== targetCol) {
+    const body = document.getElementById('cb-' + targetCol);
+    if (!body) return;
+    const cardsContainer = body.querySelector('.cards-list') || body;
+    const indicator = document.createElement('div');
+    indicator.className = 'drop-ind';
     cardsContainer.appendChild(indicator);
   }
 }
@@ -643,39 +603,16 @@ function onDragUp() {
     const card = state.cards[state.dnd.cardId];
     if (card) {
       const fromCol = card.columnId;
-      card.columnId = state.dnd.targetCol;
 
-      const targetCards = getCardsForColumn(state.dnd.targetCol).filter(c => c.id !== card.id);
-      const insertIdx = state.dnd.insertBefore
-        ? targetCards.findIndex(c => c.id === state.dnd.insertBefore)
-        : targetCards.length;
+      if (fromCol !== state.dnd.targetCol) {
+        card.columnId = state.dnd.targetCol;
+        card.createdAt = Date.now();
 
-      let newPos;
-      if (targetCards.length === 0) {
-        newPos = 1000;
-      } else if (insertIdx <= 0) {
-        newPos = (targetCards[0].position || 0) - 1000;
-      } else if (insertIdx >= targetCards.length) {
-        newPos = (targetCards[targetCards.length - 1].position || 0) + 1000;
-      } else {
-        const prev = targetCards[insertIdx - 1].position || 0;
-        const next = targetCards[insertIdx].position || 0;
-        newPos = Math.floor((prev + next) / 2);
+        lsSave();
+        fbSaveCard(board.id, card);
+        renderBoard();
+        showToast('Карточка перемещена');
       }
-      card.position = newPos;
-
-      fbSaveCard(board.id, card);
-      lsSave();
-
-      if (needsReindex(state.dnd.targetCol)) {
-        reindexColumn(state.dnd.targetCol);
-      }
-      if (fromCol !== state.dnd.targetCol && needsReindex(fromCol)) {
-        reindexColumn(fromCol);
-      }
-
-      renderBoard();
-      if (fromCol !== state.dnd.targetCol) showToast('Карточка перемещена');
     }
   }
   state.dnd = { active: false, armed: false, cardId: null, ghost: null, ox: 0, oy: 0, startX: 0, startY: 0, targetCol: null, insertBefore: null };

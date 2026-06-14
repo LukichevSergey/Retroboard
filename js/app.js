@@ -49,7 +49,6 @@ function handleCardsSnapshot(snapshot) {
     if (change.type === 'added' || change.type === 'modified') {
       const data = change.doc.data();
       data.id = String(change.doc.id);
-      if (!data.position) data.position = data.createdAt || 0;
       cleanEmptyReactions(data);
       state.cards[change.doc.id] = data;
     }
@@ -133,7 +132,6 @@ async function loadBoardCards(boardId) {
     snapshot.forEach(doc => {
       const data = doc.data();
       data.id = String(doc.id);
-      if (!data.position) data.position = data.createdAt || 0;
       cleanEmptyReactions(data);
       state.cards[doc.id] = data;
     });
