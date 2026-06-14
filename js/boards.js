@@ -223,6 +223,7 @@ function confirmDelBoard(id) {
  * Если удалена активная доска — сбрасывает activeBoardId.
  */
 async function doDelBoard() {
+  if (!isAdmin()) { alert('Только админ может удалять доски.'); return; }
   if (!state._pendingDelBoard) return;
   const boardId = state._pendingDelBoard;
   const board = state.boards[boardId];

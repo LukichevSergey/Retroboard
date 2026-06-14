@@ -27,7 +27,7 @@
  *   globalTimerUnsub  — функция отписки от Firebase-подписки таймера,
  *   userReactions     — объект { [cardId]: Set<emoji> } — реакции текущего пользователя на карточки,
  *   _pendingBoardRender — флаг: есть ли отложенная перерисовка доски ( во время drag),
- *   _globalCardId     — счётчик для генерации уникальных ID карточек (инкрементируется).
+ *   _prevUserSelect    — сохранённое значение userSelect перед drag (для восстановления).
  */
 const state = {
   boards: {},
@@ -54,6 +54,7 @@ const state = {
   globalTimerUnsub: null,
   userReactions: {},
   _pendingBoardRender: false,
+  _prevUserSelect: null,
 };
 
 /**
@@ -94,8 +95,36 @@ function getClientId() {
   }
 }
 
+function isAdmin() {
+  return new URLSearchParams(window.location.search).get('admin') === 'true';
+}
+
+/**
+ * Сохраняет текущую доску в Firebase и localStorage, перерисовывает доску.
+ */
+function saveBoard() {
+  const board = curBoard();
+  if (!board) return;
+  fbSave(board);
+  lsSave();
+  renderBoard();
+}
+
+/**
+ * Сохраняет карточку в Firebase и localStorage, перерисовывает доску.
+ * @param {Object} card — объект карточки
+ */
+function saveCard(card) {
+  const board = curBoard();
+  if (!board) return;
+  fbSaveCard(board.id, card);
+  lsSave();
+  renderBoard();
+}
+
 /**
  * Экспорт функции getClientId в глобальную область window,
  * чтобы она была доступна из HTML-атрибутов (onclick и т.п.).
  */
 window.getClientId = getClientId;
+window.isAdmin = isAdmin;

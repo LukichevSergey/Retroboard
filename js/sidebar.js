@@ -18,9 +18,9 @@ function renderSidebar() {
       <div class="bi-dot"></div>
       <span class="bi-name">${board.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</span>
       <div class="bi-actions">
-        <button class="bi-icon-btn danger" onclick="event.stopPropagation();confirmDelBoard('${board.id}')" title="Удалить">
+        ${isAdmin() ? `<button class="bi-icon-btn danger" onclick="event.stopPropagation();confirmDelBoard('${board.id}')" title="Удалить">
           <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+        </button>` : ''}
       </div>
     </div>`).join('');
 }
