@@ -5,7 +5,9 @@
  * @returns {Object} — объект схемы { bg, text, dot, tag, tt, ... }
  */
 function getScheme(schemeId) {
-  return COL_SCHEMES[schemeId] || COL_SCHEMES[0];
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const list = isDark ? COL_SCHEMES_DARK : COL_SCHEMES;
+  return list[schemeId] || list[0];
 }
 
 /**
@@ -81,10 +83,25 @@ function renderReactions(card) {
   return `<div class="reaction-bar">${pills}</div>`;
 }
 
+function dimColor(hex) {
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  let r = parseInt(h.slice(0, 2), 16);
+  let g = parseInt(h.slice(2, 4), 16);
+  let b = parseInt(h.slice(4, 6), 16);
+  const dr = 0x25, dg = 0x26, db = 0x2B;
+  r = Math.round(r * 0.3 + dr * 0.7);
+  g = Math.round(g * 0.3 + dg * 0.7);
+  b = Math.round(b * 0.3 + db * 0.7);
+  return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
+}
+
 function cardHTML(card) {
-  const contrastText = card.color ? getContrastColor(card.color) : null;
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const displayColor = (isDark && card.color) ? dimColor(card.color) : card.color;
+  const contrastText = displayColor ? getContrastColor(displayColor) : null;
   const btnBg = contrastText === '#fff' ? 'rgba(255,255,255,.08)' : 'rgba(255,255,255,.7)';
-  const bgStyle = card.color ? `style="--card-bg:${card.color};--card-text:${contrastText};--card-btn-bg:${btnBg};--card-btn-fg:${contrastText}"` : '';
+  const bgStyle = displayColor ? `style="--card-bg:${displayColor};--card-text:${contrastText};--card-btn-bg:${btnBg};--card-btn-fg:${contrastText}"` : '';
   const count = card.commentCount || 0;
   const comments = getCommentsForCard(card.id);
   const commentCount = count ? `<span class="comment-count">${count}</span>` : '';

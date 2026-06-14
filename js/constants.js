@@ -74,6 +74,17 @@ const CARD_COLORS = [
  *   4) Теперь я знаю, что... (оранжевая)
  *   5) Действия (фиолетовая)
  */
+const COL_SCHEMES_DARK = [
+  { id: 0, name: 'Зелёный', bg: '#1E2E15', text: '#A3D47A', dot: '#6BBF3A', tag: '#2A4418', tt: '#8CC85F' },
+  { id: 1, name: 'Красный', bg: '#2E1515', text: '#E88A8A', dot: '#E25454', tag: '#441818', tt: '#D47A7A' },
+  { id: 2, name: 'Синий', bg: '#152030', text: '#7AB8E8', dot: '#4A9BE0', tag: '#182A44', tt: '#7AB8E8' },
+  { id: 3, name: 'Оранжевый', bg: '#2E2510', text: '#E8B86A', dot: '#EFB040', tag: '#443510', tt: '#D4A050' },
+  { id: 4, name: 'Фиолетов.', bg: '#1E1D30', text: '#A09BE0', dot: '#8A85DD', tag: '#2A2944', tt: '#A09BE0' },
+  { id: 5, name: 'Бирюзовый', bg: '#102E22', text: '#5ECFAB', dot: '#2AC08A', tag: '#184430', tt: '#5ECFAB' },
+  { id: 6, name: 'Розовый', bg: '#2E1528', text: '#E08AB8', dot: '#D95FA0', tag: '#441830', tt: '#E08AB8' },
+  { id: 7, name: 'Жёлтый', bg: '#2E2C10', text: '#D4C850', dot: '#D4C020', tag: '#444010', tt: '#D4C850' },
+];
+
 const DEFAULT_COLS = [
   { id: 'c1', label: 'Прошлая ретроспектива', s: 0 },
   { id: 'c2', label: 'Мне понравилось... 🥰', s: 1 },

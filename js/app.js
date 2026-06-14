@@ -1,3 +1,18 @@
+function getTheme() {
+  return localStorage.getItem('rb_theme') || 'light';
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  try { localStorage.setItem('rb_theme', theme); } catch (e) {}
+  if (typeof renderBoard === 'function') renderBoard();
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+}
+
 let _renderBoardRaf = null;
 function scheduleRenderBoard() {
   if (_renderBoardRaf) return;
@@ -165,6 +180,7 @@ async function loadBoardCards(boardId) {
  * 7) Выбирает самую новую доску (или первую попавшуюся).
  */
 async function boot() {
+  applyTheme(getTheme());
   initFirebase();
   lsLoadUserReactions();
   if (firebaseOk) {
