@@ -134,8 +134,7 @@
 .emoji-picker-btn:hover { background: var(--accent-bg); }
 .emoji-picker-btn.picked { background: var(--accent-bg); outline: 2px solid var(--accent); }
 
-.comment-count { font-size: 11px; font-weight: 700; line-height: 1; text-align: center; background: transparent; color: var(--card-text, var(--hint)); }
-.comment-btn.active .comment-count { color: var(--accent); }
+.comment-count { font-size: 11px; font-weight: 700; line-height: 1; text-align: center; background: transparent; color: inherit; }
 
 .card-spacer { flex: 1; }
 
@@ -193,7 +192,14 @@
 [data-theme="dark"] .add-wrap:focus-within { border-color: var(--accent); }
 [data-theme="dark"] .comment-section { border-top-color: color-mix(in srgb, var(--card-text, var(--text)) 22%, transparent); }
 [data-theme="dark"] .comment-item { border-top-color: color-mix(in srgb, var(--card-text, var(--text)) 22%, transparent); }
-[data-theme="dark"] .card:has(style*="--card-bg") { --accent: #A098E8; }
+[data-theme="dark"] .card:has(style*="--card-bg") { --accent: #BAE6FD; }
+[data-theme="dark"] .comment-btn { color: var(--card-text, #fff); }
+[data-theme="dark"] .comment-btn:hover { color: var(--accent); }
+[data-theme="dark"] .comment-btn.active { color: var(--accent); }
+[data-theme="dark"] .reaction-pill { color: var(--card-text, #fff); }
+[data-theme="dark"] .reaction-pill:hover { color: var(--card-text, #fff); }
+[data-theme="dark"] .reaction-trigger-btn { color: var(--card-text, #fff); }
+[data-theme="dark"] .reaction-trigger-btn:hover { color: var(--accent); }
 
 .board-loading { position: relative; opacity: 0.5; pointer-events: none; }
 .board-loading::after {
