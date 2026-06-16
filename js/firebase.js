@@ -71,10 +71,22 @@ async function fbWithSyncBadge(asyncFn) {
 
 /**
  * Сохраняет (создаёт или перезаписывает) доску в Firebase Firestore.
+ * Используется только для создания новой доски.
  * @param {Object} board — объект доски с полями id, name, cols, cards и т.д.
  */
 async function fbSave(board) {
   await fbWithSyncBadge(() => boardDoc(board.id).set(board));
+}
+
+/**
+ * Обновляет отдельные поля документа доски в Firebase Firestore.
+ * Используется вместо fbSave для обновлений — не перезаписывает весь документ,
+ * а обновляет только указанные поля (предотвращает гонки при параллельных правках).
+ * @param {string} boardId — ID доски
+ * @param {Object} fields — объект с полями для обновления (например { name: '...' } или { cols: [...] })
+ */
+async function fbUpdateBoard(boardId, fields) {
+  await fbWithSyncBadge(() => boardDoc(boardId).update(fields));
 }
 
 /**
@@ -152,11 +164,24 @@ function commentDoc(boardId, cardId, commentId) {
 
 /**
  * Сохраняет карточку в подколлекцию cards.
+ * Используется только для создания новой карточки.
  * @param {string} boardId — ID доски
  * @param {Object} card — объект карточки
  */
 async function fbSaveCard(boardId, card) {
   await fbWithSyncBadge(() => cardDoc(boardId, card.id).set(card));
+}
+
+/**
+ * Обновляет отдельные поля документа карточки в Firebase Firestore.
+ * Используется вместо fbSaveCard для обновлений — не перезаписывает весь документ,
+ * а обновляет только указанные поля (предотвращает гонки при параллельных правках).
+ * @param {string} boardId — ID доски
+ * @param {string} cardId — ID карточки
+ * @param {Object} fields — объект с полями для обновления (например { text: '...', color: '#fff' })
+ */
+async function fbUpdateCard(boardId, cardId, fields) {
+  await fbWithSyncBadge(() => cardDoc(boardId, cardId).update(fields));
 }
 
 /**
@@ -175,12 +200,26 @@ async function fbDelCard(boardId, cardId) {
 
 /**
  * Сохраняет комментарий в подколлекцию comments карточки.
+ * Используется только для создания нового комментария.
  * @param {string} boardId — ID доски
  * @param {number|string} cardId — ID карточки
  * @param {Object} comment — объект комментария
  */
 async function fbSaveComment(boardId, cardId, comment) {
   await fbWithSyncBadge(() => commentDoc(boardId, cardId, comment.id).set(comment));
+}
+
+/**
+ * Обновляет отдельные поля документа комментария в Firebase Firestore.
+ * Используется вместо fbSaveComment для обновлений — не перезаписывает весь документ,
+ * а обновляет только указанные поля (предотвращает гонки при параллельных правках).
+ * @param {string} boardId — ID доски
+ * @param {number|string} cardId — ID карточки
+ * @param {string} commentId — ID комментария
+ * @param {Object} fields — объект с полями для обновления (например { text: '...' })
+ */
+async function fbUpdateComment(boardId, cardId, commentId, fields) {
+  await fbWithSyncBadge(() => commentDoc(boardId, cardId, commentId).update(fields));
 }
 
 /**

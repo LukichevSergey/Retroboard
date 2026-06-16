@@ -49,7 +49,7 @@ function confirmNewCol() {
   const label = document.getElementById('newColName').value.trim() || 'Новая колонка';
   const colId = 'c_' + uid();
   board.cols.push({ id: colId, label, s: state._newColScheme });
-  saveBoard();
+  saveBoard({ cols: board.cols });
   closeOverlay('newColOverlay');
   setTimeout(() => {
     const input = document.getElementById('cli-' + colId);
@@ -74,7 +74,7 @@ function renameCol(colId, value) {
   const column = board.cols.find(col => col.id === colId);
   if (!column) return;
   column.label = value.trim() || column.label;
-  saveBoard();
+  saveBoard({ cols: board.cols });
 }
 
 /**
@@ -114,7 +114,7 @@ function applyColScheme(colId, schemeId) {
   if (!column) return;
   column.s = schemeId;
   closeColorPopup();
-  saveBoard();
+  saveBoard({ cols: board.cols });
 }
 
 /**
@@ -147,13 +147,13 @@ async function doDelCol() {
   const cardsToDelete = getCardsForColumn(colId);
   for (const card of cardsToDelete) {
     delete state.cards[card.id];
-    fbDelCard(board.id, card.id);
+    await fbDelCard(board.id, card.id);
   }
 
   board.cols = board.cols.filter(col => col.id !== colId);
   state._pendingDelCol = null;
   closeOverlay('delColOverlay');
-  saveBoard();
+  saveBoard({ cols: board.cols });
   showToast('Колонка удалена');
 }
 

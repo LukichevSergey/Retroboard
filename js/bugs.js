@@ -66,7 +66,9 @@ function subscribeBugReport() {
     state.bugReportText = (data && data.text) ? data.text : '';
     const textarea = document.getElementById('bugReportTextarea');
     if (textarea && document.getElementById('bugOverlay')?.classList.contains('open')) {
-      textarea.value = state.bugReportText;
+      if (document.activeElement !== textarea) {
+        textarea.value = state.bugReportText;
+      }
     }
   }, error => {
     console.error('subscribeBugReport error:', error);

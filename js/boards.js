@@ -150,9 +150,9 @@ async function doCreateBoard(name, sourceBoardId = null) {
   }
 
   state.boards[id] = board;
-  fbSave(board);
+  await fbSave(board);
   for (const card of cardsToSave) {
-    fbSaveCard(id, card);
+    await fbSaveCard(id, card);
   }
   lsSave();
   renderSidebar();
@@ -192,9 +192,9 @@ async function doCopyBoard(name) {
   });
 
   state.boards[id] = board;
-  fbSave(board);
+  await fbSave(board);
   for (const card of cardsToSave) {
-    fbSaveCard(id, card);
+    await fbSaveCard(id, card);
   }
   lsSave();
   renderSidebar();
@@ -240,7 +240,7 @@ async function doDelBoard() {
     }
   }
 
-  fbDel(boardId);
+  await fbDel(boardId);
 
   Object.keys(state.cards).forEach(cardId => {
     if (boardColIds.has(state.cards[cardId]?.columnId)) {

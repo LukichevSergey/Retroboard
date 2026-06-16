@@ -111,7 +111,7 @@ function onDragUp() {
         card.columnId = state.dnd.targetCol;
         card.createdAt = Date.now();
 
-        saveCard(card);
+        saveCard(card, { columnId: card.columnId, createdAt: card.createdAt });
         showToast('Карточка перемещена');
       }
     }

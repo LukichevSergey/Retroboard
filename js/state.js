@@ -68,10 +68,10 @@ function curBoard() {
 /**
  * Генерирует короткий уникальный строковый ID на основе текущего времени
  * и случайного числа. Используется для ID колонок, комментариев и досок.
- * Формат: timestamp-base36 + 4 символа random-base36.
+ * Формат: timestamp-base36 + 8 символов random-base36 (для минимизации коллизий).
  */
 function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
 /**
@@ -101,23 +101,37 @@ function isAdmin() {
 
 /**
  * Сохраняет текущую доску в Firebase и localStorage, перерисовывает доску.
+ * Если передан объект fields — обновляет только указанные поля (field-level update).
+ * Если fields не передан — сохраняет целиком (для совместимости).
+ * @param {Object} [fields] — объект с полями для обновления (например { name: '...' })
  */
-function saveBoard() {
+function saveBoard(fields) {
   const board = curBoard();
   if (!board) return;
-  fbSave(board);
+  if (fields) {
+    fbUpdateBoard(board.id, fields);
+  } else {
+    fbSave(board);
+  }
   lsSave();
   renderBoard();
 }
 
 /**
  * Сохраняет карточку в Firebase и localStorage, перерисовывает доску.
+ * Если передан объект fields — обновляет только указанные поля (field-level update).
+ * Если fields не передан — сохраняет целиком (для совместимости).
  * @param {Object} card — объект карточки
+ * @param {Object} [fields] — объект с полями для обновления (например { text: '...' })
  */
-function saveCard(card) {
+function saveCard(card, fields) {
   const board = curBoard();
   if (!board) return;
-  fbSaveCard(board.id, card);
+  if (fields) {
+    fbUpdateCard(board.id, card.id, fields);
+  } else {
+    fbSaveCard(board.id, card);
+  }
   lsSave();
   renderBoard();
 }
