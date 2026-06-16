@@ -57,7 +57,7 @@ function renameCurBoard(value) {
   const board = curBoard();
   if (!board) return;
   board.name = value.trim() || board.name;
-  fbSave(board);
+  fbUpdateBoard(board.id, { name: board.name });
   lsSave();
   renderSidebar();
 }

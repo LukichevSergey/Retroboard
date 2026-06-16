@@ -91,11 +91,11 @@ function saveComment(cardId) {
   state.comments[cardId].push(comment);
 
   card.commentCount = (card.commentCount || 0) + 1;
-  fbUpdateCommentCount(board.id, cardId, 1);
-
   state.commentOpenState.add(cardId);
   input.value = '';
+
   fbSaveComment(board.id, cardId, comment);
+  fbUpdateCommentCount(board.id, cardId, 1);
   lsSave();
   saveCommentsCache();
   renderBoard();
@@ -124,7 +124,7 @@ function saveCommentEdit(cardId, commentId) {
   comment.text = text;
   comment.modifiedAt = Date.now();
   state._editingComment = null;
-  fbSaveComment(board.id, cardId, comment);
+  fbUpdateComment(board.id, cardId, commentId, { text, modifiedAt: comment.modifiedAt });
   lsSave();
   saveCommentsCache();
   renderBoard();
@@ -141,7 +141,7 @@ function cancelCommentEdit() {
  * @param {number} cardId    — ID карточки
  * @param {string} commentId — ID комментария для удаления
  */
-function delComment(cardId, commentId) {
+async function delComment(cardId, commentId) {
   const board = curBoard();
   if (!board) return;
   const comments = state.comments[cardId] || [];
@@ -152,12 +152,15 @@ function delComment(cardId, commentId) {
   if (!confirmed) return;
 
   state.comments[cardId] = comments.filter(c => c.id !== commentId);
-  fbDelComment(board.id, cardId, commentId);
 
   const card = state.cards[cardId];
   if (card) {
     card.commentCount = Math.max(0, (card.commentCount || 0) - 1);
-    fbUpdateCommentCount(board.id, cardId, -1);
+  }
+
+  await fbDelComment(board.id, cardId, commentId);
+  if (card) {
+    await fbUpdateCommentCount(board.id, cardId, -1);
   }
 
   lsSave();

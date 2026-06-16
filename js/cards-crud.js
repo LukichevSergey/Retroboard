@@ -109,7 +109,7 @@ function addCard(colId) {
  * Удаляет карточку по её ID.
  * @param {number} cardId — ID карточки для удаления
  */
-function delCard(cardId) {
+async function delCard(cardId) {
   const board = curBoard();
   if (!board) return;
   const card = state.cards[cardId];
@@ -120,7 +120,7 @@ function delCard(cardId) {
   if (!confirmed) return;
 
   delete state.cards[cardId];
-  fbDelCard(board.id, cardId);
+  await fbDelCard(board.id, cardId);
   lsSave();
   renderBoard();
   showToast('Карточка удалена');
@@ -168,7 +168,7 @@ function applyCardColor(cardId, color) {
   if (!card) return;
   card.color = color;
   closeColorPopup();
-  saveCard(card);
+  saveCard(card, { color });
 }
 
 /**
@@ -192,7 +192,7 @@ function saveCardEdit(cardId) {
   card.text = text;
   card.modifiedAt = Date.now();
   state._editingCardId = null;
-  saveCard(card);
+  saveCard(card, { text, modifiedAt: card.modifiedAt });
   showToast('Карточка обновлена');
 }
 
