@@ -56,16 +56,27 @@ function boardDoc(id) {
  * @param {Function} asyncFn — асинхронная функция для выполнения
  * @returns {*} — результат asyncFn или undefined при ошибке
  */
+let _syncBadgeTimer = null;
+
+function resetSyncBadge() {
+  clearTimeout(_syncBadgeTimer);
+  _syncBadgeTimer = setTimeout(() => {
+    if (firebaseOk) setSyncBadge('ok', 'Подключено');
+  }, 2000);
+}
+
 async function fbWithSyncBadge(asyncFn) {
   if (!firebaseOk) return;
   setSyncBadge('syncing', 'Сохранение…');
   try {
     const result = await asyncFn();
     setSyncBadge('ok', 'Сохранено');
+    resetSyncBadge();
     return result;
   } catch (e) {
     console.error(e);
     setSyncBadge('offline', 'Ошибка');
+    resetSyncBadge();
   }
 }
 
