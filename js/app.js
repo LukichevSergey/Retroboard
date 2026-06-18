@@ -255,6 +255,35 @@ function initializeShellEvents() {
   document.getElementById('newColName')?.addEventListener('keydown', event => {
     if (event.key === 'Enter') window.confirmNewCol();
   });
+
+  const canvas = document.getElementById('boardCanvas');
+  if (canvas) {
+    let isPanning = false, startX, startY, scrollLeft, scrollTop;
+    canvas.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      if (e.target.closest('.card, .column, .add-wrap, .add-col-btn, .empty-board')) return;
+      isPanning = true;
+      startX = e.pageX - canvas.offsetLeft;
+      startY = e.pageY - canvas.offsetTop;
+      scrollLeft = canvas.scrollLeft;
+      scrollTop = canvas.scrollTop;
+      canvas.style.cursor = 'grabbing';
+      canvas.style.userSelect = 'none';
+    });
+    canvas.addEventListener('mousemove', e => {
+      if (!isPanning) return;
+      e.preventDefault();
+      canvas.scrollLeft = scrollLeft - (e.pageX - canvas.offsetLeft - startX);
+      canvas.scrollTop = scrollTop - (e.pageY - canvas.offsetTop - startY);
+    });
+    document.addEventListener('mouseup', () => {
+      if (isPanning) {
+        isPanning = false;
+        canvas.style.cursor = '';
+        canvas.style.userSelect = '';
+      }
+    });
+  }
 }
 
 /**
