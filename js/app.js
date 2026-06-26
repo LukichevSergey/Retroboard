@@ -23,28 +23,52 @@ function scheduleRenderBoard() {
 }
 
 /**
- * Обрабатывает снапшот изменений коллекции досок из Firebase.
- * Перебирает изменения (added, modified, removed):
- *   - added/modified: обновляет state.boards и перерисовывает доску, если она активна.
- *   - removed: удаляет из state.boards, сбрасывает activeBoardId если удалена активная.
- * После обработки всех изменений перерисовывает сайдбар.
- * @param {QuerySnapshot} snapshot — снапшот изменений из Firebase
+ * Обрабатывает снапшот документа активной доски из Firebase.
+ * Обновляет данные текущей доски и перерисовывает интерфейс.
+ * @param {DocumentSnapshot} snapshot — снапшот документа доски
  */
-async function handleBoardSnapshot(snapshot) {
-  snapshot.docChanges().forEach(change => {
-    if (change.type === 'added' || change.type === 'modified') {
-      state.boards[change.doc.id] = change.doc.data();
-      if (state.activeBoardId === change.doc.id) renderBoard();
+function handleActiveBoardSnapshot(snapshot) {
+  if (!snapshot.exists) {
+    if (state.activeBoardId) {
+      delete state.boards[state.activeBoardId];
+      state.activeBoardId = null;
+      showEmpty();
+      renderSidebar();
     }
-    if (change.type === 'removed') {
-      delete state.boards[change.doc.id];
-      if (state.activeBoardId === change.doc.id) {
-        state.activeBoardId = null;
-        showEmpty();
-      }
-    }
-  });
+    return;
+  }
+
+  const boardId = snapshot.id;
+  const boardData = snapshot.data();
+  state.boards[boardId] = boardData;
+  if (state.activeBoardId === boardId) renderBoard();
   renderSidebar();
+}
+
+async function loadBoards(all = false) {
+  if (!firebaseOk) return;
+  state.boardsLoading = true;
+  renderSidebar();
+  const query = all ? boardsCol().orderBy('createdAt', 'desc') : boardsCol().orderBy('createdAt', 'desc').limit(5);
+  try {
+    const snapshot = await query.get();
+    state.boards = {};
+    snapshot.forEach(doc => {
+      state.boards[doc.id] = doc.data();
+    });
+    state.boardsLoadedAll = all || snapshot.size < 5;
+    state.boardsLoading = false;
+    renderSidebar();
+  } catch (error) {
+    console.error('Error loading boards:', error);
+    state.boardsLoading = false;
+    renderSidebar();
+  }
+}
+
+function loadAllBoards() {
+  if (!firebaseOk || state.boardsLoading) return;
+  loadBoards(true);
 }
 
 function cleanEmptyReactions(card) {
@@ -188,15 +212,7 @@ async function boot() {
   initFirebase();
   lsLoadUserReactions();
   if (firebaseOk) {
-    try {
-      const snapshot = await boardsCol().get();
-      snapshot.forEach(doc => {
-        state.boards[doc.id] = doc.data();
-      });
-    } catch (error) {
-      console.error(error);
-    }
-    subscribeBoards(handleBoardSnapshot, error => console.error(error));
+    await loadBoards(false);
     if (typeof subscribeBugReport === 'function') subscribeBugReport();
   } else {
     lsLoad();

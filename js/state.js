@@ -38,6 +38,8 @@ const state = {
   boardCommentsCache: {},
   cardsUnsub: null,
   commentsUnsubs: {},
+  boardsLoadedAll: false,
+  boardsLoading: false,
   commentOpenState: new Set(),
   _loadingComments: new Set(),
   _newBoardMode: 'create',

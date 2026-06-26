@@ -13,7 +13,8 @@ function renderSidebar() {
     container.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:var(--hint);font-style:italic">Нет досок</div>';
     return;
   }
-  container.innerHTML = list.map(board => `
+
+  const boardsHtml = list.map(board => `
     <div class="board-item ${board.id === state.activeBoardId ? 'active' : ''}" onclick="selectBoard('${board.id}')">
       <div class="bi-dot"></div>
       <span class="bi-name">${board.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')}</span>
@@ -23,6 +24,14 @@ function renderSidebar() {
         </button>` : ''}
       </div>
     </div>`).join('');
+
+  const loadAllButton = (firebaseOk && !state.boardsLoadedAll && list.length >= 5) ? `
+    <div class="board-item load-all ${state.boardsLoading ? 'loading' : ''}" onclick="if (!state.boardsLoading) loadAllBoards()">
+      ${state.boardsLoading ? '<span class="sidebar-spinner"></span>' : ''}
+      <span class="bi-name">${state.boardsLoading ? 'Загрузка...' : 'Загрузить все доски'}</span>
+    </div>` : '';
+
+  container.innerHTML = boardsHtml + loadAllButton;
 }
 
 /**
@@ -44,6 +53,7 @@ function selectBoard(id) {
   document.getElementById('boardInner').style.display = '';
   document.getElementById('copyBoardBtn').style.display = '';
   renderSidebar();
+  subscribeBoardDoc(id, handleActiveBoardSnapshot, error => console.error(error));
   loadBoardCards(id);
 }
 
