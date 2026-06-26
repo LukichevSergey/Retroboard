@@ -254,6 +254,7 @@ async function doDelBoard() {
     state.activeBoardId = null;
     state.cards = {};
     state.comments = {};
+    unsubscribeBoardDoc();
     if (state.cardsUnsub) { state.cardsUnsub(); state.cardsUnsub = null; }
     Object.values(state.commentsUnsubs).forEach(unsub => unsub());
     state.commentsUnsubs = {};

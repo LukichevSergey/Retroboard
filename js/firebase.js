@@ -6,7 +6,7 @@
  */
 let db = null;
 let firebaseOk = false;
-let unsub = null;
+let boardUnsub = null;
 
 /**
  * Инициализирует Firebase и подключается к Firestore.
@@ -114,16 +114,28 @@ async function fbDel(id) {
 }
 
 /**
- * Подписывается на все изменения в коллекции 'retroBoards' в реальном времени.
- * При каждом изменении (добавление, изменение, удаление документа) вызывается回调 onChange.
- * При ошибке —回调 onError. Перед созданием новой подписки отменяет предыдущую (если есть).
- * @param {Function} onChange — callback, получающий snapshot изменений
+ * Подписывается на изменения только активной доски.
+ * Отменяет предыдущую подписку на предыдущую активную доску.
+ * @param {string} boardId — ID активной доски
+ * @param {Function} onChange — callback, получающий snapshot документа
  * @param {Function} onError  — callback при ошибке подписки
+ * @returns {Function|null} — функция отписки
  */
-function subscribeBoards(onChange, onError) {
-  if (!firebaseOk) return;
-  if (unsub) unsub();
-  unsub = boardsCol().onSnapshot(onChange, onError);
+function subscribeBoardDoc(boardId, onChange, onError) {
+  if (!firebaseOk) return null;
+  if (boardUnsub) boardUnsub();
+  boardUnsub = boardDoc(boardId).onSnapshot(onChange, onError);
+  return boardUnsub;
+}
+
+/**
+ * Отписывается от подписки на активную доску.
+ */
+function unsubscribeBoardDoc() {
+  if (boardUnsub) {
+    boardUnsub();
+    boardUnsub = null;
+  }
 }
 
 /**
